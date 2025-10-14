@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 use Saloon\Traits\Bootable;
@@ -36,6 +34,8 @@ abstract class Connector
 
     /**
      * Define the base URL of the API.
+     *
+     * @return string
      */
-    abstract public function resolveBaseUrl(): string;
+    abstract public function resolveBaseUrl();
 }

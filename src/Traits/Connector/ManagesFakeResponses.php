@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Connector;
 
-use Throwable;
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use Saloon\Contracts\FakeResponse;
@@ -19,10 +17,12 @@ trait ManagesFakeResponses
     /**
      * Create the fake response
      *
-     * @throws \Saloon\Exceptions\PendingRequestException
-     * @throws \Throwable
+     * @return Response|PromiseInterface
+     *
+     * @throws PendingRequestException
+     * @throws Exception
      */
-    protected function createFakeResponse(PendingRequest $pendingRequest): Response|PromiseInterface
+    protected function createFakeResponse(PendingRequest $pendingRequest)
     {
         $fakeResponse = $pendingRequest->getFakeResponse();
 
@@ -37,7 +37,7 @@ trait ManagesFakeResponses
 
         $exception = $fakeResponse->getException($pendingRequest);
 
-        if ($exception instanceof Throwable && $isAsynchronous === false) {
+        if ($exception instanceof Exception && $isAsynchronous === false) {
             throw $exception;
         }
 
@@ -46,18 +46,18 @@ trait ManagesFakeResponses
         $factories = $pendingRequest->getFactoryCollection();
 
         $response = $fakeResponse->createPsrResponse(
-            responseFactory: $factories->responseFactory,
-            streamFactory: $factories->streamFactory,
+            $factories->responseFactory,
+            $factories->streamFactory
         );
 
-        /** @var class-string<\Saloon\Http\Response> $responseClass */
+        /** @var class-string<Response> $responseClass */
         $responseClass = $pendingRequest->getResponseClass();
 
         $response = $responseClass::fromPsrResponse(
-            psrResponse: $response,
-            pendingRequest: $pendingRequest,
-            psrRequest: $pendingRequest->createPsrRequest(),
-            senderException: $exception,
+            $response,
+            $pendingRequest,
+            $pendingRequest->createPsrRequest(),
+            $exception
         );
 
         $response->setFakeResponse($fakeResponse);
@@ -67,7 +67,10 @@ trait ManagesFakeResponses
         // the response.
 
         if ($fakeResponse instanceof MockResponse) {
-            $pendingRequest->getMockClient()?->recordResponse($response);
+            $mockClient = $pendingRequest->getMockClient();
+            if ($mockClient) {
+                $mockClient->recordResponse($response);
+            }
 
             $response->setMocked(true);
         }
@@ -82,7 +85,9 @@ trait ManagesFakeResponses
         // in FulfilledPromise or RejectedPromise depending on if the
         // response has an exception.
 
-        $exception ??= $response->toException();
+        if (is_null($exception)) {
+            $exception = $response->toException();
+        }
 
         return is_null($exception) ? new FulfilledPromise($response) : new RejectedPromise($exception);
     }

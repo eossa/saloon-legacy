@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\OAuth2;
 
 use Saloon\Enums\Method;
@@ -18,23 +16,41 @@ class GetAccessTokenRequest extends Request implements HasBody
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::POST;
+    protected $method = Method::POST;
+
+    /**
+     * @var string
+     */
+    protected $code;
+
+    /**
+     * @var OAuthConfig
+     */
+    protected $oauthConfig;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->oauthConfig->getTokenEndpoint();
     }
 
     /**
      * Requires the authorization code and OAuth 2 config.
+     *
+     * @param string $code
+     * @param OAuthConfig $oauthConfig
      */
-    public function __construct(protected string $code, protected OAuthConfig $oauthConfig)
+    public function __construct($code, OAuthConfig $oauthConfig)
     {
-        //
+        $this->code = $code;
+        $this->oauthConfig = $oauthConfig;
     }
 
     /**
@@ -48,7 +64,7 @@ class GetAccessTokenRequest extends Request implements HasBody
      *     redirect_uri: string,
      * }
      */
-    public function defaultBody(): array
+    public function defaultBody()
     {
         return [
             'grant_type' => 'authorization_code',

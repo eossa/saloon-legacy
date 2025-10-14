@@ -1,8 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
-use GuzzleHttp\Utils;
+use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Uri;
 use GuzzleHttp\HandlerStack;
@@ -12,100 +12,109 @@ use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Promise\FulfilledPromise;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
+use function GuzzleHttp\choose_handler;
 
-test('the guzzle sender will send to the right url using the correct method', function () {
-    $connector = new TestConnector;
-    $request = new UserRequest;
-    $sender = $connector->sender();
+class GuzzleSenderTest extends TestCase
+{
+    public function testTheGuzzleSenderWillSendToTheRightUrlUsingTheCorrectMethod()
+    {
+        $connector = new TestConnector();
+        $request = new UserRequest();
+        $sender = $connector->sender();
 
-    $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    $sender->addMiddleware(function (callable $handler) use ($pendingRequest) {
-        return function (RequestInterface $request, array $options) use ($handler, $pendingRequest) {
-            expect($request->getMethod())->toEqual($pendingRequest->getMethod()->value);
+        $sender->addMiddleware(function (callable $handler) use ($pendingRequest) {
+            return function (RequestInterface $request, array $options) use ($handler, $pendingRequest) {
+                $this->assertEquals($pendingRequest->getMethod(), $request->getMethod());
 
-            $uri = $request->getUri();
-            $saloonUri = new Uri($pendingRequest->getUrl());
+                $uri = $request->getUri();
+                $saloonUri = new Uri($pendingRequest->getUrl());
 
-            expect($uri)->toEqual($saloonUri);
+                $this->assertEquals($saloonUri, $uri);
 
-            // Return fulfilled promise to fake response
+                // Return fulfilled promise to fake response
 
-            return new FulfilledPromise(new Response());
-        };
-    });
+                return new FulfilledPromise(new Response());
+            };
+        });
 
-    $connector->send($request);
-});
+        $connector->send($request);
+    }
 
-test('the guzzle sender will send all headers, query parameters and config', function () {
-    $connector = connector();
-    $request = new UserRequest;
+    public function testTheGuzzleSenderWillSendAllHeadersQueryParametersAndConfig()
+    {
+        $connector = connector();
+        $request = new UserRequest();
 
-    $request->config()->add('timeout', 120);
-    $request->config()->add('debug', true);
-    $request->query()->add('shanty', 'yes');
-    $request->query()->add('sing', 'yes');
-    $request->headers()->add('X-Bound-For', 'South-Australia');
-    $request->headers()->add('X-Fancy', ['keyOne' => 'valOne', 'keyTwo' => 'valTwo']);
+        $request->config()->add('timeout', 120);
+        $request->config()->add('debug', true);
+        $request->query()->add('shanty', 'yes');
+        $request->query()->add('sing', 'yes');
+        $request->headers()->add('X-Bound-For', 'South-Australia');
+        $request->headers()->add('X-Fancy', ['keyOne' => 'valOne', 'keyTwo' => 'valTwo']);
 
-    $sender = $connector->sender();
+        $sender = $connector->sender();
 
-    $sender->addMiddleware(function (callable $handler) {
-        return function (RequestInterface $request, array $options) use ($handler) {
-            expect($options['timeout'])->toEqual(120);
-            expect($options['debug'])->toBeTrue();
-            expect($request->getUri()->getQuery())->toEqual('shanty=yes&sing=yes');
-            expect($request->getHeaderLine('X-Bound-For'))->toEqual('South-Australia');
-            expect($request->getHeaderLine('X-Fancy'))->toEqual('valOne, valTwo');
+        $sender->addMiddleware(function (callable $handler) {
+            return function (RequestInterface $request, array $options) use ($handler) {
+                $this->assertEquals(120, $options['timeout']);
+                $this->assertTrue($options['debug']);
+                $this->assertEquals('shanty=yes&sing=yes', $request->getUri()->getQuery());
+                $this->assertEquals('South-Australia', $request->getHeaderLine('X-Bound-For'));
+                $this->assertEquals('valOne, valTwo', $request->getHeaderLine('X-Fancy'));
 
-            // Return fulfilled promise to fake response
+                // Return fulfilled promise to fake response
 
-            return new FulfilledPromise(new Response());
-        };
-    });
+                return new FulfilledPromise(new Response());
+            };
+        });
 
-    $connector->send($request);
-});
+        $connector->send($request);
+    }
 
-test('the guzzle sender has the default handler stack configured by default', function () {
-    $connector = new TestConnector;
-    $sender = $connector->sender();
+    public function testTheGuzzleSenderHasTheDefaultHandlerStackConfiguredByDefault()
+    {
+        $connector = new TestConnector();
+        $sender = $connector->sender();
 
-    expect($sender)->toBeInstanceOf(GuzzleSender::class);
+        $this->assertInstanceOf(GuzzleSender::class, $sender);
 
-    $handlerStack = $sender->getHandlerStack();
+        $handlerStack = $sender->getHandlerStack();
 
-    // The HandlerStack::create() loads important default middleware
+        // The HandlerStack::create() loads important default middleware
 
-    expect($handlerStack)->toEqual(HandlerStack::create());
-});
+        $this->assertEquals(HandlerStack::create(), $handlerStack);
+    }
 
-test('the guzzle sender has default options configured', function () {
-    $connector = new TestConnector;
-    $sender = $connector->sender();
+    public function testTheGuzzleSenderHasDefaultOptionsConfigured()
+    {
+        $connector = new TestConnector();
+        $sender = $connector->sender();
 
-    expect($sender)->toBeInstanceOf(GuzzleSender::class);
+        $this->assertInstanceOf(GuzzleSender::class, $sender);
 
-    $client = $sender->getGuzzleClient();
+        $client = $sender->getGuzzleClient();
 
-    $freshClient = new Client([
-        'connect_timeout' => 10,
-        'timeout' => 30,
-        'http_errors' => true,
-        'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
-    ]);
+        $freshClient = new Client([
+            'connect_timeout' => 10,
+            'timeout' => 30,
+            'http_errors' => true,
+            'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
+        ]);
 
-    expect($freshClient->getConfig())->toEqual($client->getConfig());
-});
+        $this->assertEquals($freshClient->getConfig(), $client->getConfig());
+    }
 
-test('you can set a custom handler stack on the guzzle sender', function () {
-    $connector = new TestConnector;
-    $sender = $connector->sender();
+    public function testYouCanSetACustomHandlerStackOnTheGuzzleSender()
+    {
+        $connector = new TestConnector();
+        $sender = $connector->sender();
 
-    $handlerStack = new HandlerStack(Utils::chooseHandler());
+        $handlerStack = new HandlerStack(choose_handler());
 
-    $sender->setHandlerStack($handlerStack);
+        $sender->setHandlerStack($handlerStack);
 
-    expect($sender->getHandlerStack())->toBe($handlerStack);
-});
+        $this->assertSame($handlerStack, $sender->getHandlerStack());
+    }
+}

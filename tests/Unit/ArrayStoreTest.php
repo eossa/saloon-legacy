@@ -1,76 +1,97 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\ArrayStore;
 
-test('the store is empty by default', function () {
-    $store = new ArrayStore();
+class ArrayStoreTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $store = new ArrayStore();
 
-    expect($store->all())->toEqual([]);
-});
+        $this->assertEquals([], $store->all());
+    }
 
-test('you can set it', function () {
-    $store = new ArrayStore();
+    public function testYouCanSetIt()
+    {
+        $store = new ArrayStore();
 
-    $store->set(['name' => 'Sam']);
+        $store->set(['name' => 'Sam']);
 
-    expect($store->all())->toEqual(['name' => 'Sam']);
-});
+        $this->assertEquals(['name' => 'Sam'], $store->all());
+    }
 
-test('you can add an item', function () {
-    $store = new ArrayStore();
-    $store->add('name', 'Sam');
+    public function testYouCanAddAnItem()
+    {
+        $store = new ArrayStore();
+        $store->add('name', 'Sam');
 
-    expect($store->all())->toEqual(['name' => 'Sam']);
-});
+        $this->assertEquals(['name' => 'Sam'], $store->all());
+    }
 
-test('you can conditionally add items to the array store', function () {
-    $store = new ArrayStore();
+    public function testYouCanConditionallyAddItemsToTheArrayStore()
+    {
+        $store = new ArrayStore();
 
-    $store->when(true, fn (ArrayStore $store) => $store->add('name', 'Gareth'));
-    $store->when(false, fn (ArrayStore $store) => $store->add('name', 'Sam'));
-    $store->when(true, fn (ArrayStore $store) => $store->add('sidekick', 'Mantas'));
-    $store->when(false, fn (ArrayStore $store) => $store->add('sidekick', 'Teo'));
+        $store->when(true, function (ArrayStore $store) {
+            $store->add('name', 'Gareth');
+        });
+        $store->when(false, function (ArrayStore $store) {
+            $store->add('name', 'Sam');
+        });
+        $store->when(true, function (ArrayStore $store) {
+            $store->add('sidekick', 'Mantas');
+        });
+        $store->when(false, function (ArrayStore $store) {
+            $store->add('sidekick', 'Teo');
+        });
 
-    expect($store->all())->toEqual(['name' => 'Gareth', 'sidekick' => 'Mantas']);
-});
+        $this->assertEquals(['name' => 'Gareth', 'sidekick' => 'Mantas'], $store->all());
+    }
 
-test('you can delete an item', function () {
-    $store = new ArrayStore(['name' => 'Sam']);
-    $store->remove('name');
+    public function testYouCanDeleteAnItem()
+    {
+        $store = new ArrayStore(['name' => 'Sam']);
+        $store->remove('name');
 
-    expect($store->all())->toEqual([]);
-});
+        $this->assertEquals([], $store->all());
+    }
 
-test('you can get an item', function () {
-    $store = new ArrayStore(['name' => 'Sam']);
+    public function testYouCanGetAnItem()
+    {
+        $store = new ArrayStore(['name' => 'Sam']);
 
-    expect($store->get('name'))->toEqual('Sam');
-});
+        $this->assertEquals('Sam', $store->get('name'));
+    }
 
-test('you can get all items', function () {
-    $store = new ArrayStore(['name' => 'Sam', 'superhero' => 'Iron Man']);
+    public function testYouCanGetAllItems()
+    {
+        $store = new ArrayStore(['name' => 'Sam', 'superhero' => 'Iron Man']);
 
-    expect($store->all())->toEqual(['name' => 'Sam', 'superhero' => 'Iron Man']);
-});
+        $this->assertEquals(['name' => 'Sam', 'superhero' => 'Iron Man'], $store->all());
+    }
 
-test('you can merge items together into the content store', function () {
-    $store = new ArrayStore(['name' => 'Sam', 'superhero' => 'Iron Man']);
+    public function testYouCanMergeItemsTogetherIntoTheContentStore()
+    {
+        $store = new ArrayStore(['name' => 'Sam', 'superhero' => 'Iron Man']);
 
-    $store->merge(['sidekick' => 'Gareth'], ['superhero' => 'Black Widow']);
+        $store->merge(['sidekick' => 'Gareth'], ['superhero' => 'Black Widow']);
 
-    expect($store->all())->toEqual(['name' => 'Sam', 'sidekick' => 'Gareth', 'superhero' => 'Black Widow']);
-});
+        $this->assertEquals(['name' => 'Sam', 'sidekick' => 'Gareth', 'superhero' => 'Black Widow'], $store->all());
+    }
 
-test('you can check if the store is empty or not', function () {
-    $store = new ArrayStore();
+    public function testYouCanCheckIfTheStoreIsEmptyOrNot()
+    {
+        $store = new ArrayStore();
 
-    expect($store->isEmpty())->toBeTrue();
-    expect($store->isNotEmpty())->toBeFalse();
+        $this->assertTrue($store->isEmpty());
+        $this->assertFalse($store->isNotEmpty());
 
-    $store->add('name', 'Sam');
+        $store->add('name', 'Sam');
 
-    expect($store->isEmpty())->toBeFalse();
-    expect($store->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($store->isEmpty());
+        $this->assertTrue($store->isNotEmpty());
+    }
+}

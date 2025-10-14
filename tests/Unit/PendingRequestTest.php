@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Enums\Method;
 use Saloon\Http\PendingRequest;
@@ -9,47 +9,56 @@ use Saloon\Http\Faking\MockResponse;
 use Saloon\Exceptions\InvalidHeaderException;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
+use PHPUnit\Framework\TestCase;
 
-test('you can overwrite the url and the method of the pending request', function () {
-    $connector = new TestConnector;
+class PendingRequestTest extends TestCase
+{
+    public function testYouCanOverwriteTheUrlAndTheMethodOfThePendingRequest()
+    {
+        $connector = new TestConnector();
 
-    $connector->withMockClient(new MockClient([
-        new MockResponse(['name' => 'Sam']),
-    ]));
+        $connector->withMockClient(new MockClient([
+            new MockResponse(['name' => 'Sam']),
+        ]));
 
-    $connector->middleware()->onRequest(function (PendingRequest $pendingRequest) {
-        $pendingRequest->setUrl('https://other-endpoint.co.uk' . $pendingRequest->getRequest()->resolveEndpoint());
-        $pendingRequest->setMethod(Method::POST);
-    });
+        $connector->middleware()->onRequest(function (PendingRequest $pendingRequest) {
+            $pendingRequest->setUrl('https://other-endpoint.co.uk' . $pendingRequest->getRequest()->resolveEndpoint());
+            $pendingRequest->setMethod(Method::POST);
+        });
 
-    $request = new UserRequest;
+        $request = new UserRequest();
 
-    expect($request->getMethod())->toEqual(Method::GET);
+        $this->assertEquals(Method::GET, $request->getMethod());
 
-    $response = $connector->send(new UserRequest);
-    $pendingRequest = $response->getPendingRequest();
+        $response = $connector->send(new UserRequest());
+        $pendingRequest = $response->getPendingRequest();
 
-    expect($pendingRequest->getUrl())->toEqual('https://other-endpoint.co.uk/user');
-    expect($pendingRequest->getMethod())->toEqual(Method::POST);
-});
+        $this->assertEquals('https://other-endpoint.co.uk/user', $pendingRequest->getUrl());
+        $this->assertEquals(Method::POST, $pendingRequest->getMethod());
+    }
 
-test('the pending request is macroable', function () {
-    PendingRequest::macro('yee', fn () => 'haw');
+    public function testThePendingRequestIsMacroable()
+    {
+        PendingRequest::macro('yee', function () {
+            return 'haw';
+        });
 
-    $pendingRequest = connector()->createPendingRequest(new UserRequest);
+        $pendingRequest = connector()->createPendingRequest(new UserRequest());
 
-    expect($pendingRequest->yee())->toEqual('haw');
-});
+        $this->assertEquals('haw', $pendingRequest->yee());
+    }
 
-test('the pending request validates properly formed headers', function () {
-    $request = new UserRequest;
+    public function testThePendingRequestValidatesProperlyFormedHeaders()
+    {
+        $request = new UserRequest();
 
-    $request->headers()->set([
-        'Content-Type: application/json',
-    ]);
+        $request->headers()->set([
+            'Content-Type: application/json',
+        ]);
 
-    $this->expectException(InvalidHeaderException::class);
-    $this->expectExceptionMessage('One or more of the headers are invalid. Make sure to use the header name as the key. For example: [\'Content-Type\' => \'application/json\'].');
+        $this->expectException(InvalidHeaderException::class);
+        $this->expectExceptionMessage('One or more of the headers are invalid. Make sure to use the header name as the key. For example: [\'Content-Type\' => \'application/json\'].');
 
-    connector()->createPendingRequest($request);
-});
+        connector()->createPendingRequest($request);
+    }
+}

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,24 +13,29 @@ class OverwrittenQueryParameterConnectorRequest extends Request
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = QueryParameterConnector::class;
+    protected $connector = QueryParameterConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    protected function defaultQuery(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultQuery()
     {
         return [
             'sort' => 'date_of_birth',

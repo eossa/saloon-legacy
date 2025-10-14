@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\PendingRequest;
 
+use ReflectionException;
 use Saloon\Helpers\Helpers;
 use Saloon\Http\PendingRequest;
 
@@ -11,8 +10,12 @@ class BootPlugins
 {
     /**
      * Boot the plugins
+     *
+     * @return PendingRequest
+     *
+     * @throws ReflectionException
      */
-    public function __invoke(PendingRequest $pendingRequest): PendingRequest
+    public function __invoke(PendingRequest $pendingRequest)
     {
         $connector = $pendingRequest->getConnector();
         $request = $pendingRequest->getRequest();

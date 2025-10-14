@@ -1,7 +1,9 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature\Oauth2;
 
+use DateTimeImmutable;
+use InvalidArgumentException;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Tests\Helpers\Date;
@@ -21,407 +23,445 @@ use Saloon\Tests\Fixtures\Connectors\CustomRequestOAuth2Connector;
 use Saloon\Tests\Fixtures\Requests\OAuth\CustomAccessTokenRequest;
 use Saloon\Tests\Fixtures\Connectors\CustomResponseOAuth2Connector;
 use Saloon\Tests\Fixtures\Requests\OAuth\CustomRefreshTokenRequest;
+use PHPUnit\Framework\TestCase;
 
-test('you can get the redirect url from a connector', function () {
-    $connector = new OAuth2Connector;
+class AuthCodeFlowConnectorTest extends TestCase
+{
+    public function testYouCanGetTheRedirectUrlFromAConnector()
+    {
+        $connector = new OAuth2Connector();
 
-    expect($connector->getState())->toBeNull();
+        $this->assertNull($connector->getState());
 
-    $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], 'my-state');
+        $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], 'my-state');
 
-    $state = $connector->getState();
+        $state = $connector->getState();
 
-    expect($state)->toEqual('my-state');
+        $this->assertEquals('my-state', $state);
 
-    expect($url)->toEqual(
-        'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state'
-    );
-});
+        $this->assertEquals(
+            'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state',
+            $url
+        );
+    }
 
-test('you can provide default scopes that will be applied to every authorization url', function () {
-    $connector = new OAuth2Connector;
+    public function testYouCanProvideDefaultScopesThatWillBeAppliedToEveryAuthorizationUrl()
+    {
+        $connector = new OAuth2Connector();
 
-    $connector->oauthConfig()->setDefaultScopes(['scope-3']);
+        $connector->oauthConfig()->setDefaultScopes(['scope-3']);
 
-    $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], 'my-state');
+        $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], 'my-state');
 
-    expect($url)->toEqual(
-        'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-3%20scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state'
-    );
-});
+        $this->assertEquals(
+            'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-3%20scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state',
+            $url
+        );
+    }
 
-test('you can get authorization url without setting valid scopes', function () {
-    $connector = new OAuth2Connector;
+    public function testYouCanGetAuthorizationUrlWithoutSettingValidScopes()
+    {
+        $connector = new OAuth2Connector();
 
-    $connector->oauthConfig()->setDefaultScopes(['', null]);
+        $connector->oauthConfig()->setDefaultScopes(['', null]);
 
-    $url = $connector->getAuthorizationUrl([], 'my-state');
+        $url = $connector->getAuthorizationUrl([], 'my-state');
 
-    expect($url)->toEqual(
-        'https://oauth.saloon.dev/authorize?response_type=code&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state'
-    );
-});
+        $this->assertEquals(
+            'https://oauth.saloon.dev/authorize?response_type=code&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state',
+            $url
+        );
+    }
 
-test('default state is generated automatically with every authorization url if state is not defined', function () {
-    $connector = new OAuth2Connector;
+    public function testDefaultStateIsGeneratedAutomaticallyWithEveryAuthorizationUrlIfStateIsNotDefined()
+    {
+        $connector = new OAuth2Connector();
 
-    $connector->oauthConfig()->setDefaultScopes(['scope-3']);
+        $connector->oauthConfig()->setDefaultScopes(['scope-3']);
 
-    expect($connector->getState())->toBeNull();
+        $this->assertNull($connector->getState());
 
-    $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2']);
-    $state = $connector->getState();
+        $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2']);
+        $state = $connector->getState();
 
-    expect($state)->toBeString();
+        $this->assertTrue(is_string($state));
 
-    expect(str_ends_with($url, $state))->toBeTrue();
-});
+        $this->assertTrue(substr($url, -strlen($state)) === $state);
+    }
 
-test('additional query parameters can be added passed to the authorization url', function () {
-    $connector = new OAuth2Connector;
+    public function testAdditionalQueryParametersCanBeAddedPassedToTheAuthorizationUrl()
+    {
+        $connector = new OAuth2Connector();
 
-    $url = $connector->getAuthorizationUrl(
-        ['scope-1', 'scope-2'],
-        state: 'my-state',
-        additionalQueryParameters: ['another-param' => 'another-value', 'yee' => 'haw']
-    );
+        // In PHP 5.6, we need to use traditional parameter passing instead of named parameters
+        $url = $connector->getAuthorizationUrl(
+            ['scope-1', 'scope-2'],
+            'my-state',
+            ' ',
+            ['another-param' => 'another-value', 'yee' => 'haw']
+        );
 
-    expect(str_ends_with($url, 'another-param=another-value&yee=haw'))->toBeTrue();
-    expect($url)->toEqual(
-        'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state&another-param=another-value&yee=haw'
-    );
-});
+        // Test that the additional parameters are included in the URL
+        $this->assertContains('another-param=another-value', $url);
+        $this->assertContains('yee=haw', $url);
+        $this->assertEquals(
+            'https://oauth.saloon.dev/authorize?response_type=code&scope=scope-1%20scope-2&client_id=client-id&redirect_uri=https%3A%2F%2Fmy-app.saloon.dev%2Fauth%2Fcallback&state=my-state&another-param=another-value&yee=haw',
+            $url
+        );
+    }
 
-test('you can request a token from a connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
-    ]);
+    public function testYouCanRequestATokenFromAConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new OAuth2Connector;
+        $connector = new OAuth2Connector();
 
-    $connector->withMockClient($mockClient);
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken('code');
+        $authenticator = $connector->getAccessToken('code');
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toEqual('refresh');
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
-});
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertEquals('refresh', $authenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
+    }
 
-test('you can tap into the access token request and modify it', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
-    ]);
+    public function testYouCanTapIntoTheAccessTokenRequestAndModifyIt()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new OAuth2Connector;
+        $connector = new OAuth2Connector();
 
-    $connector->withMockClient($mockClient);
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken('code', requestModifier: function (Request $request) {
-        $request->query()->add('yee', 'haw');
-    });
+        $authenticator = $connector->getAccessToken('code', null, null, false, function (Request $request) {
+            $request->query()->add('yee', 'haw');
+        });
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toEqual('refresh');
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertEquals('refresh', $authenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['yee' => 'haw']);
-});
+        $this->assertEquals(['yee' => 'haw'], $mockClient->getLastPendingRequest()->query()->all());
+    }
 
-test('you can request the original response instead of the authenticator on the create tokens method', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600]),
-    ]);
+    public function testYouCanRequestTheOriginalResponseInsteadOfTheAuthenticatorOnTheCreateTokensMethod()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600]),
+        ]);
 
-    $connector = new OAuth2Connector;
+        $connector = new OAuth2Connector();
 
-    $connector->withMockClient($mockClient);
+        $connector->withMockClient($mockClient);
 
-    $response = $connector->getAccessToken('code', null, null, true);
+        $response = $connector->getAccessToken('code', null, null, true);
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->json())->toEqual(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600]);
-});
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], $response->json());
+    }
 
-test('it will throw an exception if state is invalid', function () {
-    $connector = new OAuth2Connector;
+    public function testItWillThrowAnExceptionIfStateIsInvalid()
+    {
+        $connector = new OAuth2Connector();
 
-    $state = 'secret';
-    $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], $state);
+        $state = 'secret';
+        $url = $connector->getAuthorizationUrl(['scope-1', 'scope-2'], $state);
 
-    $connector->getAccessToken('code', 'invalid', $state);
-})->throws(InvalidStateException::class, 'Invalid state.');
+        $this->expectException(InvalidStateException::class);
+        $this->expectExceptionMessage('Invalid state.');
 
-test('you can refresh a token from a connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-    ]);
+        $connector->getAccessToken('code', 'invalid', $state);
+    }
 
-    $connector = new OAuth2Connector;
+    public function testYouCanRefreshATokenFromAConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+        ]);
 
-    $connector->withMockClient($mockClient);
+        $connector = new OAuth2Connector();
 
-    $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
+        $connector->withMockClient($mockClient);
 
-    $newAuthenticator = $connector->refreshAccessToken($authenticator);
+        $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
 
-    expect($newAuthenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($newAuthenticator->getAccessToken())->toEqual('access-new');
-    expect($newAuthenticator->getRefreshToken())->toEqual('refresh-new');
-    expect($newAuthenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
-});
+        $newAuthenticator = $connector->refreshAccessToken($authenticator);
 
-test('you can tap into the refresh token request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-    ]);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $newAuthenticator);
+        $this->assertEquals('access-new', $newAuthenticator->getAccessToken());
+        $this->assertEquals('refresh-new', $newAuthenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $newAuthenticator->getExpiresAt());
+    }
 
-    $connector = new OAuth2Connector;
+    public function testYouCanTapIntoTheRefreshTokenRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+        ]);
 
-    $connector->withMockClient($mockClient);
+        $connector = new OAuth2Connector();
 
-    $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
+        $connector->withMockClient($mockClient);
 
-    $newAuthenticator = $connector->refreshAccessToken($authenticator, requestModifier: function (Request $request) {
-        $request->query()->add('yee', 'haw');
-    });
+        $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
 
-    expect($newAuthenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($newAuthenticator->getAccessToken())->toEqual('access-new');
-    expect($newAuthenticator->getRefreshToken())->toEqual('refresh-new');
-    expect($newAuthenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
+        $newAuthenticator = $connector->refreshAccessToken($authenticator, false, function (Request $request) {
+            $request->query()->add('yee', 'haw');
+        });
 
-    $mockClient->assertSentCount(1);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $newAuthenticator);
+        $this->assertEquals('access-new', $newAuthenticator->getAccessToken());
+        $this->assertEquals('refresh-new', $newAuthenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $newAuthenticator->getExpiresAt());
 
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['yee' => 'haw']);
-});
+        $mockClient->assertSentCount(1);
 
-test('the refreshAccessToken method throws an exception if you provide it an authenticator that is not refreshable', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-    ]);
+        $this->assertEquals(['yee' => 'haw'], $mockClient->getLastPendingRequest()->query()->all());
+    }
 
-    $connector = new OAuth2Connector;
+    public function testTheRefreshAccessTokenMethodThrowsAnExceptionIfYouProvideItAnAuthenticatorThatIsNotRefreshable()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+        ]);
 
-    $connector->withMockClient($mockClient);
+        $connector = new OAuth2Connector();
 
-    $authenticator = new AccessTokenAuthenticator('access', null, Date::now()->addSeconds(3600)->toDateTime());
+        $connector->withMockClient($mockClient);
 
-    $this->expectException(InvalidArgumentException::class);
-    $this->expectExceptionMessage('The provided OAuthAuthenticator does not contain a refresh token.');
+        $authenticator = new AccessTokenAuthenticator('access', null, Date::now()->addSeconds(3600)->toDateTime());
 
-    $connector->refreshAccessToken($authenticator);
-});
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('The provided OAuthAuthenticator does not contain a refresh token.');
 
-test('you can request the original response instead of the authenticator on the refresh tokens method', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-    ]);
+        $connector->refreshAccessToken($authenticator);
+    }
 
-    $connector = new OAuth2Connector;
+    public function testYouCanRequestTheOriginalResponseInsteadOfTheAuthenticatorOnTheRefreshTokensMethod()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+        ]);
 
-    $connector->withMockClient($mockClient);
+        $connector = new OAuth2Connector();
 
-    $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
+        $connector->withMockClient($mockClient);
 
-    $response = $connector->refreshAccessToken($authenticator, true);
+        $authenticator = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->json())->toEqual(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]);
-});
+        $response = $connector->refreshAccessToken($authenticator, true);
 
-test('you can get the user from an oauth connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['user' => 'Sam']),
-    ]);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600], $response->json());
+    }
 
-    $connector = new OAuth2Connector;
-    $connector->withMockClient($mockClient);
+    public function testYouCanGetTheUserFromAnOauthConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['user' => 'Sam']),
+        ]);
 
-    $accessToken = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
+        $connector = new OAuth2Connector();
+        $connector->withMockClient($mockClient);
 
-    $response = $connector->getUser($accessToken);
+        $accessToken = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $response = $connector->getUser($accessToken);
 
-    $pendingRequest = $response->getPendingRequest();
+        $this->assertInstanceOf(Response::class, $response);
 
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-        'Authorization' => 'Bearer access',
-        'Content-Type' => 'application/x-www-form-urlencoded',
-    ]);
-});
+        $pendingRequest = $response->getPendingRequest();
 
-test('you can tap into the the user request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['user' => 'Sam']),
-    ]);
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer access',
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ], $pendingRequest->headers()->all());
+    }
 
-    $connector = new OAuth2Connector;
-    $connector->withMockClient($mockClient);
+    public function testYouCanTapIntoTheTheUserRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['user' => 'Sam']),
+        ]);
 
-    $accessToken = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
+        $connector = new OAuth2Connector();
+        $connector->withMockClient($mockClient);
 
-    $response = $connector->getUser($accessToken, function (Request $request) {
-        $request->query()->add('yee', 'haw');
-    });
+        $accessToken = new AccessTokenAuthenticator('access', 'refresh', Date::now()->addSeconds(3600)->toDateTime());
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $response = $connector->getUser($accessToken, function (Request $request) {
+            $request->query()->add('yee', 'haw');
+        });
 
-    $pendingRequest = $response->getPendingRequest();
+        $this->assertInstanceOf(Response::class, $response);
 
-    expect($pendingRequest->query()->all())->toEqual(['yee' => 'haw']);
+        $pendingRequest = $response->getPendingRequest();
 
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-        'Authorization' => 'Bearer access',
-        'Content-Type' => 'application/x-www-form-urlencoded',
-    ]);
-});
+        $this->assertEquals(['yee' => 'haw'], $pendingRequest->query()->all());
 
-test('you can customize the oauth authenticator', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-    ]);
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer access',
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ], $pendingRequest->headers()->all());
+    }
 
-    $customConnector = new CustomResponseOAuth2Connector('Howdy!');
-    $customConnector->withMockClient($mockClient);
+    public function testYouCanCustomizeTheOauthAuthenticator()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+        ]);
 
-    $authenticator = $customConnector->getAccessToken('code');
+        $customConnector = new CustomResponseOAuth2Connector('Howdy!');
+        $customConnector->withMockClient($mockClient);
 
-    expect($authenticator)->toBeInstanceOf(CustomOAuthAuthenticator::class);
-    expect($authenticator->getGreeting())->toEqual('Howdy!');
-});
+        $authenticator = $customConnector->getAccessToken('code');
 
-test('you can register a global request modifier that is called on every step of the OAuth2 process', function () {
-    $mockClient = new MockClient([
-        GetAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
-        GetRefreshTokenRequest::class => MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-        GetUserRequest::class => MockResponse::make(['user' => 'Sam']),
-    ]);
+        $this->assertInstanceOf(CustomOAuthAuthenticator::class, $authenticator);
+        $this->assertEquals('Howdy!', $authenticator->getGreeting());
+    }
 
-    $connector = new OAuth2Connector;
-    $requests = [];
+    public function testYouCanRegisterAGlobalRequestModifierThatIsCalledOnEveryStepOfTheOAuth2Process()
+    {
+        $mockClient = new MockClient([
+            GetAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
+            GetRefreshTokenRequest::class => MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+            GetUserRequest::class => MockResponse::make(['user' => 'Sam']),
+        ]);
 
-    $connector->oauthConfig()->setRequestModifier(function (Request $request) use (&$requests) {
-        $requests[] = $request::class;
+        $connector = new OAuth2Connector();
+        $requests = [];
 
-        match ($request::class) {
-            GetAccessTokenRequest::class => $request->query()->add('request', 'access'),
-            GetRefreshTokenRequest::class => $request->query()->add('request', 'refresh'),
-            GetUserRequest::class => $request->query()->add('request', 'user'),
-        };
-    });
+        $connector->oauthConfig()->setRequestModifier(function (Request $request) use (&$requests) {
+            $requests[] = get_class($request);
 
-    $connector->withMockClient($mockClient);
+            if ($request instanceof GetAccessTokenRequest) {
+                $request->query()->add('request', 'access');
+            } elseif ($request instanceof GetRefreshTokenRequest) {
+                $request->query()->add('request', 'refresh');
+            } elseif ($request instanceof GetUserRequest) {
+                $request->query()->add('request', 'user');
+            }
+        });
 
-    $authenticator = $connector->getAccessToken('code');
+        $connector->withMockClient($mockClient);
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toEqual('refresh');
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['request' => 'access']);
+        $authenticator = $connector->getAccessToken('code');
 
-    $newAuthenticator = $connector->refreshAccessToken($authenticator);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertEquals('refresh', $authenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
+        $this->assertEquals(['request' => 'access'], $mockClient->getLastPendingRequest()->query()->all());
 
-    expect($newAuthenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($newAuthenticator->getAccessToken())->toEqual('access-new');
-    expect($newAuthenticator->getRefreshToken())->toEqual('refresh-new');
-    expect($newAuthenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['request' => 'refresh']);
+        $newAuthenticator = $connector->refreshAccessToken($authenticator);
 
-    $response = $connector->getUser($newAuthenticator);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $newAuthenticator);
+        $this->assertEquals('access-new', $newAuthenticator->getAccessToken());
+        $this->assertEquals('refresh-new', $newAuthenticator->getRefreshToken());
+        $this->assertInstanceOf(DateTimeImmutable::class, $newAuthenticator->getExpiresAt());
+        $this->assertEquals(['request' => 'refresh'], $mockClient->getLastPendingRequest()->query()->all());
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['request' => 'user']);
+        $response = $connector->getUser($newAuthenticator);
 
-    $pendingRequest = $response->getPendingRequest();
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertEquals(['request' => 'user'], $mockClient->getLastPendingRequest()->query()->all());
 
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-        'Authorization' => 'Bearer access-new',
-        'Content-Type' => 'application/x-www-form-urlencoded',
-    ]);
+        $pendingRequest = $response->getPendingRequest();
 
-    expect($requests)->toEqual([
-        GetAccessTokenRequest::class,
-        GetRefreshTokenRequest::class,
-        GetUserRequest::class,
-    ]);
-});
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer access-new',
+            'Content-Type' => 'application/x-www-form-urlencoded',
+        ], $pendingRequest->headers()->all());
 
-test('if you attempt to use the authorization code flow without a client id it will throw an exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+        $this->assertEquals([
+            GetAccessTokenRequest::class,
+            GetRefreshTokenRequest::class,
+            GetUserRequest::class,
+        ], $requests);
+    }
 
-    $connector = new NoConfigAuthCodeConnector;
-    $connector->withMockClient($mockClient);
+    public function testIfYouAttemptToUseTheAuthorizationCodeFlowWithoutAClientIdItWillThrowAnException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $this->expectException(OAuthConfigValidationException::class);
-    $this->expectExceptionMessage('The Client ID is empty or has not been provided.');
+        $connector = new NoConfigAuthCodeConnector();
+        $connector->withMockClient($mockClient);
 
-    $connector->getAccessToken('code');
-});
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client ID is empty or has not been provided.');
 
-test('if you attempt to use the authorization code flow without a secret it will throw an exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+        $connector->getAccessToken('code');
+    }
 
-    $connector = new NoConfigAuthCodeConnector;
-    $connector->withMockClient($mockClient);
+    public function testIfYouAttemptToUseTheAuthorizationCodeFlowWithoutASecretItWillThrowAnException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector->oauthConfig()->setClientId('hello');
+        $connector = new NoConfigAuthCodeConnector();
+        $connector->withMockClient($mockClient);
 
-    $this->expectException(OAuthConfigValidationException::class);
-    $this->expectExceptionMessage('The Client Secret is empty or has not been provided.');
+        $connector->oauthConfig()->setClientId('hello');
 
-    $connector->getAccessToken('code');
-});
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client Secret is empty or has not been provided.');
 
-test('if you attempt to use the authorization code flow without a redirect uri it will throw an exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+        $connector->getAccessToken('code');
+    }
 
-    $connector = new NoConfigAuthCodeConnector;
-    $connector->withMockClient($mockClient);
+    public function testIfYouAttemptToUseTheAuthorizationCodeFlowWithoutARedirectUriItWillThrowAnException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector->oauthConfig()->setClientId('hello');
-    $connector->oauthConfig()->setClientSecret('secret');
+        $connector = new NoConfigAuthCodeConnector();
+        $connector->withMockClient($mockClient);
 
-    $this->expectException(OAuthConfigValidationException::class);
-    $this->expectExceptionMessage('The Redirect URI is empty or has not been provided.');
+        $connector->oauthConfig()->setClientId('hello');
+        $connector->oauthConfig()->setClientSecret('secret');
 
-    $connector->getAccessToken('code');
-});
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Redirect URI is empty or has not been provided.');
 
-test('on the connector you can overwrite all the request classes', function () {
-    $mockClient = new MockClient([
-        CustomAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
-        CustomRefreshTokenRequest::class => MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
-        CustomOAuthUserRequest::class => MockResponse::make(['user' => 'Sam']),
-    ]);
+        $connector->getAccessToken('code');
+    }
 
-    $connector = new CustomRequestOAuth2Connector;
-    $connector->withMockClient($mockClient);
+    public function testOnTheConnectorYouCanOverwriteAllTheRequestClasses()
+    {
+        $mockClient = new MockClient([
+            CustomAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'refresh_token' => 'refresh', 'expires_in' => 3600], 200),
+            CustomRefreshTokenRequest::class => MockResponse::make(['access_token' => 'access-new', 'refresh_token' => 'refresh-new', 'expires_in' => 3600]),
+            CustomOAuthUserRequest::class => MockResponse::make(['user' => 'Sam']),
+        ]);
 
-    $accessTokenResponse = $connector->getAccessToken('code', returnResponse: true);
+        $connector = new CustomRequestOAuth2Connector();
+        $connector->withMockClient($mockClient);
 
-    expect($accessTokenResponse->getRequest())->toBeInstanceOf(CustomAccessTokenRequest::class);
+        $accessTokenResponse = $connector->getAccessToken('code', null, null, true);
 
-    $refreshTokenResponse = $connector->refreshAccessToken('howdy', returnResponse: true);
+        $this->assertInstanceOf(CustomAccessTokenRequest::class, $accessTokenResponse->getRequest());
 
-    expect($refreshTokenResponse->getRequest())->toBeInstanceOf(CustomRefreshTokenRequest::class);
+        $refreshTokenResponse = $connector->refreshAccessToken('howdy', true);
 
-    $userResponse = $connector->getUser(new AccessTokenAuthenticator('howdy', 'partner'));
+        $this->assertInstanceOf(CustomRefreshTokenRequest::class, $refreshTokenResponse->getRequest());
 
-    expect($userResponse->getRequest())->toBeInstanceOf(CustomOAuthUserRequest::class);
-});
+        $userResponse = $connector->getUser(new AccessTokenAuthenticator('howdy', 'partner'));
+
+        $this->assertInstanceOf(CustomOAuthUserRequest::class, $userResponse->getRequest());
+    }
+}

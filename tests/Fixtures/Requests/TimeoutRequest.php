@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -13,28 +11,36 @@ class TimeoutRequest extends Request
 {
     use HasTimeout;
 
-    protected int $connectTimeout = 1;
+    /**
+     * @var int
+     */
+    protected $connectTimeout = 1;
 
-    protected int $requestTimeout = 2;
+    /**
+     * @var int
+     */
+    protected $requestTimeout = 2;
 
     /**
      * Define the method that the request will use.
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }

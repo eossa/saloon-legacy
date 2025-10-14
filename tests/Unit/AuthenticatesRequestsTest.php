@@ -1,8 +1,9 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use GuzzleHttp\RequestOptions;
+use PHPUnit\Framework\TestCase;
 use Saloon\Exceptions\SaloonException;
 use Saloon\Http\Auth\NullAuthenticator;
 use Saloon\Http\Auth\MultiAuthenticator;
@@ -12,110 +13,125 @@ use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\ArraySenderConnector;
 use Saloon\Tests\Fixtures\Connectors\DefaultAuthenticatorConnector;
 
-test('you can add basic auth to a request', function () {
-    $request = new UserRequest;
-    $request->withBasicAuth('Sammyjo20', 'Cowboy1');
+class AuthenticatesRequestsTest extends TestCase
+{
+    public function testYouCanAddBasicAuthToARequest()
+    {
+        $request = new UserRequest();
+        $request->withBasicAuth('Sammyjo20', 'Cowboy1');
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $headers = $pendingRequest->headers()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers)->toBeArray();
-    expect($headers['Authorization'])->toEqual('Basic ' . base64_encode('Sammyjo20:Cowboy1'));
-});
+        $this->assertInternalType('array', $headers);
+        $this->assertEquals('Basic ' . base64_encode('Sammyjo20:Cowboy1'), $headers['Authorization']);
+    }
 
-test('you can attach an authorization token to a request', function () {
-    $request = UserRequest::make()->withTokenAuth('Sammyjo20');
+    public function testYouCanAttachAnAuthorizationTokenToARequest()
+    {
+        $request = UserRequest::make()->withTokenAuth('Sammyjo20');
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $headers = $pendingRequest->headers()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers)->toHaveKey('Authorization', 'Bearer Sammyjo20');
-});
+        $this->assertArrayHasKey('Authorization', $headers);
+        $this->assertEquals('Bearer Sammyjo20', $headers['Authorization']);
+    }
 
-test('you can add digest auth to a request', function () {
-    $request = new UserRequest;
-    $request->withDigestAuth('Sammyjo20', 'Cowboy1', 'Howdy');
+    public function testYouCanAddDigestAuthToARequest()
+    {
+        $this->expectException(SaloonException::class);
+        $this->expectExceptionMessage('The DigestAuthenticator is only supported when using the GuzzleSender.');
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $config = $pendingRequest->config()->all();
+        $request = new UserRequest();
+        $request->withDigestAuth('Sammyjo20', 'Cowboy1', 'Howdy');
 
-    expect($config['auth'])->toBeArray();
-    expect($config['auth'][0])->toEqual('Sammyjo20');
-    expect($config['auth'][1])->toEqual('Cowboy1');
-    expect($config['auth'][2])->toEqual('Howdy');
+        $pendingRequest = connector()->createPendingRequest($request);
+        $config = $pendingRequest->config()->all();
 
-    // We'll now test trying to use the `withDigestAuth` on the array sender
+        $this->assertInternalType('array', $config['auth']);
+        $this->assertEquals('Sammyjo20', $config['auth'][0]);
+        $this->assertEquals('Cowboy1', $config['auth'][1]);
+        $this->assertEquals('Howdy', $config['auth'][2]);
 
-    $arraySenderConnector = new ArraySenderConnector;
-    $arraySenderConnector->send($request);
-})->throws(SaloonException::class, 'The DigestAuthenticator is only supported when using the GuzzleSender.');
+        // We'll now test trying to use the `withDigestAuth` on the array sender
+        $arraySenderConnector = new ArraySenderConnector();
+        $arraySenderConnector->send($request);
+    }
 
-test('you can add a token to a query parameter', function () {
-    $request = UserRequest::make()->withQueryAuth('token', 'Sammyjo20');
+    public function testYouCanAddATokenToAQueryParameter()
+    {
+        $request = UserRequest::make()->withQueryAuth('token', 'Sammyjo20');
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $query = $pendingRequest->query()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $query = $pendingRequest->query()->all();
 
-    expect($query)->toHaveKey('token', 'Sammyjo20');
-});
+        $this->assertArrayHasKey('token', $query);
+        $this->assertEquals('Sammyjo20', $query['token']);
+    }
 
-test('you can add a header to a request', function () {
-    $request = UserRequest::make()->withHeaderAuth('Sammyjo20', 'X-Authorization');
+    public function testYouCanAddAHeaderToARequest()
+    {
+        $request = UserRequest::make()->withHeaderAuth('Sammyjo20', 'X-Authorization');
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $query = $pendingRequest->headers()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $query = $pendingRequest->headers()->all();
 
-    expect($query)->toHaveKey('X-Authorization', 'Sammyjo20');
-});
+        $this->assertArrayHasKey('X-Authorization', $query);
+        $this->assertEquals('Sammyjo20', $query['X-Authorization']);
+    }
 
-test('you can add a certificate to a request', function () {
-    $certPath = __DIR__ . '/certificate.cer';
+    public function testYouCanAddACertificateToARequest()
+    {
+        $certPath = __DIR__ . '/certificate.cer';
 
-    $requestA = UserRequest::make()->withCertificateAuth($certPath);
+        $requestA = UserRequest::make()->withCertificateAuth($certPath);
 
-    $pendingRequestA = connector()->createPendingRequest($requestA);
-    $configA = $pendingRequestA->config()->all();
+        $pendingRequestA = connector()->createPendingRequest($requestA);
+        $configA = $pendingRequestA->config()->all();
 
-    expect($configA)->toBe([
-        RequestOptions::CERT => $certPath,
-    ]);
+        $this->assertEquals([
+            RequestOptions::CERT => $certPath,
+        ], $configA);
 
-    // Test with password
+        // Test with password
+        $requestB = UserRequest::make()->withCertificateAuth($certPath, 'example');
 
-    $requestB = UserRequest::make()->withCertificateAuth($certPath, 'example');
+        $pendingRequestB = connector()->createPendingRequest($requestB);
+        $configB = $pendingRequestB->config()->all();
 
-    $pendingRequestB = connector()->createPendingRequest($requestB);
-    $configB = $pendingRequestB->config()->all();
+        $this->assertEquals([
+            RequestOptions::CERT => [$certPath, 'example'],
+        ], $configB);
+    }
 
-    expect($configB)->toBe([
-        RequestOptions::CERT => [$certPath, 'example'],
-    ]);
-});
+    public function testYouCanUseMultipleAuthenticatorsAtTheSameTimeUsingTheDefaultAuthMethod()
+    {
+        $request = UserRequest::make()->authenticate(new MultiAuthenticator(
+            new TokenAuthenticator('example'),
+            new HeaderAuthenticator('api-key', 'X-API-Key')
+        ));
 
-test('you can use multiple authenticators at the same time using the defaultAuth method', function () {
-    $request = UserRequest::make()->authenticate(new MultiAuthenticator(
-        new TokenAuthenticator('example'),
-        new HeaderAuthenticator('api-key', 'X-API-Key'),
-    ));
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $headers = $pendingRequest->headers()->all();
 
-    $headers = $pendingRequest->headers()->all();
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer example',
+            'X-API-Key' => 'api-key',
+        ], $headers);
+    }
 
-    expect($headers)->toEqual([
-        'Accept' => 'application/json',
-        'Authorization' => 'Bearer example',
-        'X-API-Key' => 'api-key',
-    ]);
-});
+    public function testYouCanUseANullAuthenticatorToDisableDefaultAuthenticationEntirely()
+    {
+        $connector = new DefaultAuthenticatorConnector();
+        $request = new UserRequest();
 
-test('you can use a null authenticator to disable default authentication entirely', function () {
-    $connector = new DefaultAuthenticatorConnector;
-    $request = new UserRequest;
+        $request->authenticate(new NullAuthenticator());
 
-    $request->authenticate(new NullAuthenticator);
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    $pendingRequest = $connector->createPendingRequest($request);
-
-    expect($pendingRequest->headers()->all())->toEqual(['Accept' => 'application/json']);
-});
+        $this->assertEquals(['Accept' => 'application/json'], $pendingRequest->headers()->all());
+    }
+}

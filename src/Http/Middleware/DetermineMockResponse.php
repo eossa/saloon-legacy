@@ -1,10 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Middleware;
 
+use Exception;
 use Saloon\Enums\PipeOrder;
+use Saloon\Exceptions\DuplicatePipeNameException;
+use Saloon\Exceptions\NoMockResponseFoundException;
 use Saloon\Http\Faking\Fixture;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Faking\MockResponse;
@@ -15,10 +16,13 @@ class DetermineMockResponse implements RequestMiddleware
     /**
      * Check if a MockClient has been provided and guess the MockResponse based on the request.
      *
-     * @throws \Saloon\Exceptions\FixtureMissingException
-     * @throws \Saloon\Exceptions\NoMockResponseFoundException
+     * @return PendingRequest
+     *
+     * @throws NoMockResponseFoundException
+     * @throws DuplicatePipeNameException
+     * @throws Exception
      */
-    public function __invoke(PendingRequest $pendingRequest): PendingRequest
+    public function __invoke(PendingRequest $pendingRequest)
     {
         if ($pendingRequest->hasMockClient() === false) {
             return $pendingRequest;

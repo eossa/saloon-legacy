@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\RequestProperties;
 
 use Saloon\Repositories\ArrayStore;
@@ -11,15 +9,22 @@ trait HasQuery
 {
     /**
      * Request Query Parameters
+     *
+     * @var ArrayStoreContract
      */
-    protected ArrayStoreContract $query;
+    protected $query;
 
     /**
      * Access the query parameters
+     *
+     * @return ArrayStoreContract
      */
-    public function query(): ArrayStoreContract
+    public function query()
     {
-        return $this->query ??= new ArrayStore($this->defaultQuery());
+        if (isset($this->query)) {
+            return $this->query;
+        }
+        return $this->query = new ArrayStore($this->defaultQuery());
     }
 
     /**
@@ -27,7 +32,7 @@ trait HasQuery
      *
      * @return array<string, mixed>
      */
-    protected function defaultQuery(): array
+    protected function defaultQuery()
     {
         return [];
     }

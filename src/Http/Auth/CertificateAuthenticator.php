@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Auth;
 
 use GuzzleHttp\RequestOptions;
@@ -13,21 +11,37 @@ use Saloon\Exceptions\SaloonException;
 class CertificateAuthenticator implements Authenticator
 {
     /**
+     * @var string
+     */
+    public $path;
+
+    /**
+     * @var string|null
+     */
+    public $password;
+
+    /**
      * Constructor
+     *
+     * @param string $path
+     * @param string|null $password
      */
     public function __construct(
-        public string  $path,
-        public ?string $password = null,
+        $path,
+        $password = null
     ) {
-        //
+        $this->path = $path;
+        $this->password = $password;
     }
 
     /**
      * Apply the authentication to the request.
      *
-     * @throws \Saloon\Exceptions\SaloonException
+     * @return void
+     *
+     * @throws SaloonException
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         if (! $pendingRequest->getConnector()->sender() instanceof GuzzleSender) {
             throw new SaloonException('The CertificateAuthenticator is only supported when using the GuzzleSender.');

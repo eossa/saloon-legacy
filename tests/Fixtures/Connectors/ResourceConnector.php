@@ -1,14 +1,15 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Tests\Fixtures\Resources\UserBaseResource;
 
 class ResourceConnector extends TestConnector
 {
-    public function user(): UserBaseResource
+    /**
+     * @return UserBaseResource
+     */
+    public function user()
     {
         return new UserBaseResource($this);
     }

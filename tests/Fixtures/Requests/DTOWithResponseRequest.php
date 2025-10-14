@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
+use Exception;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
@@ -18,30 +17,53 @@ class DTOWithResponseRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
+
+    /**
+     * @var int|null
+     */
+    public $userId;
+
+    /**
+     * @var int|null
+     */
+    public $groupId;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    public function __construct(public ?int $userId = null, public ?int $groupId = null)
+    /**
+     * @param int|null $userId
+     * @param int|null $groupId
+     */
+    public function __construct($userId = null, $groupId = null)
     {
-        //
+        $this->userId = $userId;
+        $this->groupId = $groupId;
     }
 
     /**
      * Cast to a User.
+     *
+     * @return object
+     *
+     * @throws Exception
      */
-    public function createDtoFromResponse(Response $response): object
+    public function createDtoFromResponse(Response $response)
     {
         return UserWithResponse::fromResponse($response);
     }

@@ -1,26 +1,48 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Data;
 
+use Exception;
 use Saloon\Http\Response;
 
 class User
 {
-    
+    /**
+     * @var string
+     */
+    public $name;
+
+    /**
+     * @var string
+     */
+    public $actualName;
+
+    /**
+     * @var string
+     */
+    public $twitter;
+
+    /**
+     * @param string $name
+     * @param string $actualName
+     * @param string $twitter
+     */
     public function __construct(
-        public string $name,
-        public string $actualName,
-        public string $twitter,
+        $name,
+        $actualName,
+        $twitter
     ) {
-        //
+        $this->name = $name;
+        $this->actualName = $actualName;
+        $this->twitter = $twitter;
     }
 
     /**
      * @return static
+     *
+     * @throws Exception
      */
-    public static function fromSaloon(Response $response): self
+    public static function fromSaloon(Response $response)
     {
         $data = $response->json();
 

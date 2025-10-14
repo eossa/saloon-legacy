@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Repositories\Body;
 
+use Exception;
 use InvalidArgumentException;
 use Saloon\Data\MultipartValue;
 use Saloon\Traits\Conditionable;
@@ -21,26 +20,34 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
 
     /**
      * Base Repository
+     *
+     * @var ArrayBodyRepository
      */
-    protected ArrayBodyRepository $data;
+    protected $data;
 
     /**
      * The Multipart Boundary
+     *
+     * @var string
      */
-    protected string $boundary;
+    protected $boundary;
 
     /**
      * Multipart Body Factory
+     *
+     * @var MultipartBodyFactory
      */
-    protected MultipartBodyFactory $multipartBodyFactory;
+    protected $multipartBodyFactory;
 
     /**
      * Constructor
      *
-     * @param array<\Saloon\Data\MultipartValue> $value
-     * @throws \Exception
+     * @param array<MultipartValue> $value
+     * @param ?string $boundary
+     *
+     * @throws Exception
      */
-    public function __construct(array $value = [], ?string $boundary = null)
+    public function __construct(array $value = [], $boundary = null)
     {
         $this->data = new ArrayBodyRepository;
         $this->boundary = is_null($boundary) ? StringHelpers::random(40) : $boundary;
@@ -51,10 +58,11 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Set a value inside the repository
      *
-     * @param array<\Saloon\Data\MultipartValue> $value
+     * @param array<MultipartValue> $value
+     *
      * @return $this
      */
-    public function set(mixed $value): static
+    public function set($value)
     {
         if (! is_array($value)) {
             throw new InvalidArgumentException('The value must be an array');
@@ -70,14 +78,17 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Merge another array into the repository
      *
-     * @param array<\Saloon\Data\MultipartValue> ...$arrays
+     * @param array<MultipartValue> ...$arrays
+     *
      * @return $this
      */
-    public function merge(array ...$arrays): static
+    public function merge(array ...$arrays)
     {
         $this->data->merge(...array_map(
-            $this->parseMultipartArray(...),
-            $arrays,
+            function ($array) {
+                return $this->parseMultipartArray($array);
+            },
+            $arrays
         ));
 
         return $this;
@@ -86,11 +97,14 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Add an element to the repository.
      *
-     * @param \Psr\Http\Message\StreamInterface|resource|string $contents
+     * @param string $name
+     * @param StreamInterface|resource|string $contents
+     * @param ?string $filename
      * @param array<string, mixed> $headers
+     *
      * @return $this
      */
-    public function add(string $name, mixed $contents, ?string $filename = null, array $headers = []): static
+    public function add($name, $contents, $filename = null, array $headers = [])
     {
         $this->attach(new MultipartValue($name, $contents, $filename, $headers));
 
@@ -102,7 +116,7 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
      *
      * @return $this
      */
-    public function attach(MultipartValue $file): static
+    public function attach(MultipartValue $file)
     {
         $this->data->add(null, $file);
 
@@ -112,9 +126,9 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Get the raw data in the repository.
      *
-     * @return array<\Saloon\Data\MultipartValue>
+     * @return array<MultipartValue>
      */
-    public function all(): array
+    public function all()
     {
         return $this->data->all();
     }
@@ -123,9 +137,11 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
      * Get a specific key of the array
      *
      * @param array-key $key
+     * @param mixed $default
+     *
      * @return MultipartValue|array<MultipartValue>
      */
-    public function get(string|int $key, mixed $default = null): MultipartValue|array
+    public function get($key, $default = null)
     {
         $values = array_values(array_filter($this->all(), static function (MultipartValue $value) use ($key) {
             return $value->name === $key;
@@ -145,9 +161,11 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Remove an item from the repository.
      *
+     * @param string $key
+     *
      * @return $this
      */
-    public function remove(string $key): static
+    public function remove($key)
     {
         $values = array_filter($this->all(), static function (MultipartValue $value) use ($key) {
             return $value->name !== $key;
@@ -160,16 +178,20 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
 
     /**
      * Determine if the repository is empty
+     *
+     * @return bool
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return $this->data->isEmpty();
     }
 
     /**
      * Determine if the repository is not empty
+     *
+     * @return bool
      */
-    public function isNotEmpty(): bool
+    public function isNotEmpty()
     {
         return $this->data->isNotEmpty();
     }
@@ -178,11 +200,13 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
      * Parse a multipart array
      *
      * @param array<string, mixed> $value
-     * @return array<\Saloon\Data\MultipartValue>
+     * @return array<MultipartValue>
      */
-    protected function parseMultipartArray(array $value): array
+    protected function parseMultipartArray(array $value)
     {
-        $multipartValues = array_filter($value, static fn (mixed $item): bool => $item instanceof MultipartValue);
+        $multipartValues = array_filter($value, static function ($item) {
+            return $item instanceof MultipartValue;
+        });
 
         if (count($value) !== count($multipartValues)) {
             throw new InvalidArgumentException(sprintf('The value array must only contain %s objects.', MultipartValue::class));
@@ -193,8 +217,10 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
 
     /**
      * Set the multipart body factory
+     *
+     * @return MultipartBodyRepository
      */
-    public function setMultipartBodyFactory(MultipartBodyFactory $multipartBodyFactory): MultipartBodyRepository
+    public function setMultipartBodyFactory(MultipartBodyFactory $multipartBodyFactory)
     {
         $this->multipartBodyFactory = $multipartBodyFactory;
 
@@ -203,8 +229,10 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
 
     /**
      * Get the boundary
+     *
+     * @return string
      */
-    public function getBoundary(): string
+    public function getBoundary()
     {
         return $this->boundary;
     }
@@ -212,9 +240,13 @@ class MultipartBodyRepository implements BodyRepository, MergeableBody
     /**
      * Convert the body repository into a stream
      *
+     * @param StreamFactoryInterface $streamFactory
+     *
+     * @return StreamInterface
+     *
      * @throws BodyException
      */
-    public function toStream(StreamFactoryInterface $streamFactory): StreamInterface
+    public function toStream(StreamFactoryInterface $streamFactory)
     {
         if (! isset($this->multipartBodyFactory)) {
             throw new BodyException('Unable to create a multipart body stream because the multipart body factory was not set.');

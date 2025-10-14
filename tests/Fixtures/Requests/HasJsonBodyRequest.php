@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,13 +13,17 @@ class HasJsonBodyRequest extends Request implements HasBody
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
@@ -31,7 +33,7 @@ class HasJsonBodyRequest extends Request implements HasBody
      *
      * @return string[]
      */
-    protected function defaultBody(): array
+    protected function defaultBody()
     {
         return [
             'name' => 'Sam',

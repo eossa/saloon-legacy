@@ -1,22 +1,27 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Tests\Fixtures\Connectors\ResourceConnector;
 
-test('a resource can be used to send a request', function () {
-    $mockClient = new MockClient([
-        MockResponse::fixture('user'),
-    ]);
+class BaseResourceTest extends TestCase
+{
+    public function testAResourceCanBeUsedToSendARequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::fixture('user'),
+        ]);
 
-    $connector = new ResourceConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ResourceConnector();
+        $connector->withMockClient($mockClient);
 
-    expect($connector->user()->get())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $connector->user()->get());
+    }
+}

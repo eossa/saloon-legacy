@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\RequestProperties;
 
 use Saloon\Repositories\ArrayStore;
@@ -11,15 +9,22 @@ trait HasHeaders
 {
     /**
      * Request Headers
+     *
+     * @var ArrayStoreContract
      */
-    protected ArrayStoreContract $headers;
+    protected $headers;
 
     /**
      * Access the headers
+     *
+     * @return ArrayStoreContract
      */
-    public function headers(): ArrayStoreContract
+    public function headers()
     {
-        return $this->headers ??= new ArrayStore($this->defaultHeaders());
+        if (isset($this->headers)) {
+            return $this->headers;
+        }
+        return $this->headers = new ArrayStore($this->defaultHeaders());
     }
 
     /**
@@ -27,7 +32,7 @@ trait HasHeaders
      *
      * @return array<string, mixed>
      */
-    protected function defaultHeaders(): array
+    protected function defaultHeaders()
     {
         return [];
     }

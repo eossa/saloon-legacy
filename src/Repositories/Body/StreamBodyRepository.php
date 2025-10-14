@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Repositories\Body;
 
 use InvalidArgumentException;
@@ -19,14 +17,14 @@ class StreamBodyRepository implements BodyRepository
      *
      * @var StreamInterface|resource|null
      */
-    protected mixed $stream = null;
+    protected $stream = null;
 
     /**
      * Constructor
      *
      * @param StreamInterface|resource|null $value
      */
-    public function __construct(mixed $value = null)
+    public function __construct($value = null)
     {
         $this->set($value);
     }
@@ -37,7 +35,7 @@ class StreamBodyRepository implements BodyRepository
      * @param StreamInterface|resource|null $value
      * @return $this
      */
-    public function set(mixed $value): static
+    public function set($value)
     {
         if (isset($value) && ! $value instanceof StreamInterface && ! is_resource($value)) {
             throw new InvalidArgumentException('The value must a resource or be an instance of ' . StreamInterface::class);
@@ -50,8 +48,10 @@ class StreamBodyRepository implements BodyRepository
 
     /**
      * Retrieve the stream from the repository
+     *
+     * @return resource|StreamInterface|null
      */
-    public function all(): mixed
+    public function all()
     {
         return $this->stream;
     }
@@ -60,32 +60,40 @@ class StreamBodyRepository implements BodyRepository
      * Retrieve the stream from the repository
      *
      * Alias of "all" method.
+     *
+     * @return StreamInterface|resource|null
      */
-    public function get(): mixed
+    public function get()
     {
         return $this->all();
     }
 
     /**
      * Determine if the repository is empty
+     *
+     * @return bool
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return is_null($this->stream);
     }
 
     /**
      * Determine if the repository is not empty
+     *
+     * @return bool
      */
-    public function isNotEmpty(): bool
+    public function isNotEmpty()
     {
         return ! $this->isEmpty();
     }
 
     /**
      * Convert the body repository into a stream
+     *
+     * @return StreamInterface
      */
-    public function toStream(StreamFactoryInterface $streamFactory): StreamInterface
+    public function toStream(StreamFactoryInterface $streamFactory)
     {
         $stream = $this->stream;
 

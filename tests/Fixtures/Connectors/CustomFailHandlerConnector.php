@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Response;
@@ -14,17 +12,21 @@ class CustomFailHandlerConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
     /**
      * Determine if the request has failed
+     *
+     * @return bool|null
      */
-    public function hasRequestFailed(Response $response): ?bool
+    public function hasRequestFailed(Response $response)
     {
-        return str_contains($response->body(), 'Error:');
+        return strpos($response->body(), 'Error:') !== false;
     }
 }

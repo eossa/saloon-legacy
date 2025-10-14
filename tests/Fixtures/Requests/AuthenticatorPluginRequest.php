@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -18,21 +16,41 @@ class AuthenticatorPluginRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
-    
-    public function __construct(public ?int $userId = null, public ?int $groupId = null)
+    /**
+     * @var int|null
+     */
+    public $userId;
+
+    /**
+     * @var int|null
+     */
+    public $groupId;
+
+
+    /**
+     * @param int|null $userId
+     * @param int|null $groupId
+     */
+    public function __construct($userId = null, $groupId = null)
     {
-        //
+        $this->userId = $userId;
+        $this->groupId = $groupId;
     }
 
-    
-    public function resolveEndpoint(): string
+
+    /**
+     * @return string
+     */
+    public function resolveEndpoint()
     {
         return '/user';
     }

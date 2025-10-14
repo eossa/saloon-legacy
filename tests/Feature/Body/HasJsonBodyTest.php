@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature\Body;
 
 use Saloon\Http\PendingRequest;
 use GuzzleHttp\Psr7\HttpFactory;
@@ -14,139 +14,152 @@ use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\HasJsonBodyRequest;
 use Saloon\Tests\Fixtures\Connectors\HasJsonBodyConnector;
 use Saloon\Tests\Fixtures\Requests\HasMultipartBodyRequest;
+use PHPUnit\Framework\TestCase;
 
-test('the default body is loaded with the content type header', function () {
-    $request = new HasJsonBodyRequest();
+class HasJsonBodyTest extends TestCase
+{
+    public function testTheDefaultBodyIsLoadedWithTheContentTypeHeader()
+    {
+        $request = new HasJsonBodyRequest();
 
-    expect($request->body()->all())->toEqual([
-        'name' => 'Sam',
-        'catchphrase' => 'Yeehaw!',
-    ]);
+        $this->assertEquals([
+            'name' => 'Sam',
+            'catchphrase' => 'Yeehaw!',
+        ], $request->body()->all());
 
-    $connector = new TestConnector;
-    $pendingRequest = $connector->createPendingRequest($request);
+        $connector = new TestConnector();
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Content-Type'))->toEqual('application/json');
-});
+        $this->assertEquals('application/json', $pendingRequest->headers()->get('Content-Type'));
+    }
 
-test('the content-type header is set in the pending request', function () {
-    $request = new HasJsonBodyRequest();
+    public function testTheContentTypeHeaderIsSetInThePendingRequest()
+    {
+        $request = new HasJsonBodyRequest();
 
-    $pendingRequest = TestConnector::make()->createPendingRequest($request);
+        $pendingRequest = TestConnector::make()->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-        'Content-Type' => 'application/json',
-    ]);
-});
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json',
+        ], $pendingRequest->headers()->all());
+    }
 
-test('when just the connector has body the body will be sent', function () {
-    $connector = new HasJsonBodyConnector;
-    $request = new UserRequest;
+    public function testWhenJustTheConnectorHasBodyTheBodyWillBeSent()
+    {
+        $connector = new HasJsonBodyConnector();
+        $request = new UserRequest();
 
-    expect($connector->body()->all())->toEqual([
-        'name' => 'Gareth',
-        'drink' => 'Moonshine',
-    ]);
+        $this->assertEquals([
+            'name' => 'Gareth',
+            'drink' => 'Moonshine',
+        ], $connector->body()->all());
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $pendingRequestBody = $pendingRequest->body();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequestBody = $pendingRequest->body();
 
-    expect($pendingRequestBody)->toBeInstanceOf(JsonBodyRepository::class);
+        $this->assertInstanceOf(JsonBodyRepository::class, $pendingRequestBody);
 
-    expect($pendingRequestBody->all())->toEqual([
-        'name' => 'Gareth',
-        'drink' => 'Moonshine',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Gareth',
+            'drink' => 'Moonshine',
+        ], $pendingRequestBody->all());
+    }
 
-test('when both the connector and the request have the same request bodies they will be merged', function () {
-    $connector = new HasJsonBodyConnector;
-    $request = new HasJsonBodyRequest;
+    public function testWhenBothTheConnectorAndTheRequestHaveTheSameRequestBodiesTheyWillBeMerged()
+    {
+        $connector = new HasJsonBodyConnector();
+        $request = new HasJsonBodyRequest();
 
-    expect($connector->body()->all())->toEqual([
-        'name' => 'Gareth',
-        'drink' => 'Moonshine',
-    ]);
+        $this->assertEquals([
+            'name' => 'Gareth',
+            'drink' => 'Moonshine',
+        ], $connector->body()->all());
 
-    expect($request->body()->all())->toEqual([
-        'name' => 'Sam',
-        'catchphrase' => 'Yeehaw!',
-    ]);
+        $this->assertEquals([
+            'name' => 'Sam',
+            'catchphrase' => 'Yeehaw!',
+        ], $request->body()->all());
 
-    // Name should be overwritten to "Sam" and "catchphrase" should be merged in
+        // Name should be overwritten to "Sam" and "catchphrase" should be merged in
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $pendingRequestBody = $pendingRequest->body();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequestBody = $pendingRequest->body();
 
-    expect($pendingRequestBody)->toBeInstanceOf(JsonBodyRepository::class);
+        $this->assertInstanceOf(JsonBodyRepository::class, $pendingRequestBody);
 
-    expect($pendingRequestBody->all())->toEqual([
-        'drink' => 'Moonshine',
-        'name' => 'Sam',
-        'catchphrase' => 'Yeehaw!',
-    ]);
-});
+        $this->assertEquals([
+            'drink' => 'Moonshine',
+            'name' => 'Sam',
+            'catchphrase' => 'Yeehaw!',
+        ], $pendingRequestBody->all());
+    }
 
-test('if the connector and request implement different body repositories then an exception is thrown', function () {
-    $connector = new HasJsonBodyConnector;
-    $request = new HasMultipartBodyRequest;
+    public function testIfTheConnectorAndRequestImplementDifferentBodyRepositoriesThenAnExceptionIsThrown()
+    {
+        $connector = new HasJsonBodyConnector();
+        $request = new HasMultipartBodyRequest();
 
-    $connector->createPendingRequest($request);
-})->throws(PendingRequestException::class, 'Connector and request body types must be the same.');
+        $this->expectException(PendingRequestException::class);
+        $this->expectExceptionMessage('Connector and request body types must be the same.');
 
-test('the guzzle sender properly sends it', function () {
-    $connector = new TestConnector;
-    $request = new HasJsonBodyRequest;
+        $connector->createPendingRequest($request);
+    }
 
-    $request->middleware()->onRequest(static function (PendingRequest $pendingRequest) {
-        expect($pendingRequest->headers()->get('Content-Type'))->toEqual('application/json');
-    });
+    public function testTheGuzzleSenderProperlySendsIt()
+    {
+        $connector = new TestConnector();
+        $request = new HasJsonBodyRequest();
 
-    $asserted = false;
+        $request->middleware()->onRequest(function (PendingRequest $pendingRequest) {
+            $this->assertEquals('application/json', $pendingRequest->headers()->get('Content-Type'));
+        });
 
-    $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
-        return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
-            expect($guzzleRequest->getHeader('Content-Type'))->toEqual(['application/json']);
-            expect((string)$guzzleRequest->getBody())->toEqual((string)$request->body());
+        $asserted = false;
 
-            $asserted = true;
+        $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
+            return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
+                $this->assertEquals(['application/json'], $guzzleRequest->getHeader('Content-Type'));
+                $this->assertEquals((string)$request->body(), (string)$guzzleRequest->getBody());
 
-            $factory = new HttpFactory;
+                $asserted = true;
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+                $factory = new HttpFactory();
 
-    $connector->send($request);
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
 
-    expect($asserted)->toBeTrue();
-});
+        $connector->send($request);
 
-test('you can specify different json flags that the body repository should use', function () {
-    $request = new HasJsonBodyRequest();
-    $body = $request->body();
+        $this->assertTrue($asserted);
+    }
 
-    // We'll add a property with slashes
+    public function testYouCanSpecifyDifferentJsonFlagsThatTheBodyRepositoryShouldUse()
+    {
+        $request = new HasJsonBodyRequest();
+        $body = $request->body();
 
-    $body->add('url', 'https://docs.saloon.dev');
+        // We'll add a property with slashes
 
-    // By default, PHP will escape slashes
+        $body->add('url', 'https://docs.saloon.dev');
 
-    expect((string)$body)->toEqual('{"name":"Sam","catchphrase":"Yeehaw!","url":"https:\/\/docs.saloon.dev"}');
+        // By default, PHP will escape slashes
 
-    // Now we'll customise the flags
+        $this->assertEquals('{"name":"Sam","catchphrase":"Yeehaw!","url":"https:\/\/docs.saloon.dev"}', (string)$body);
 
-    $body->setJsonFlags(JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+        $body->setJsonFlags(JSON_UNESCAPED_SLASHES);
 
-    expect((string)$body)->toEqual('{"name":"Sam","catchphrase":"Yeehaw!","url":"https://docs.saloon.dev"}');
+        $this->assertEquals('{"name":"Sam","catchphrase":"Yeehaw!","url":"https://docs.saloon.dev"}', (string)$body);
 
-    expect($body->getJsonFlags())->toEqual(JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
-});
+        $this->assertEquals(JSON_UNESCAPED_SLASHES, $body->getJsonFlags());
+    }
 
-test('the JsonBodyRepository uses the JSON_THROW_ON_ERROR default flag', function () {
-    $request = new HasJsonBodyRequest();
-    $body = $request->body();
+    public function testTheJsonBodyRepositoryUsesTheJsonThrowOnErrorDefaultFlag()
+    {
+        $request = new HasJsonBodyRequest();
+        $body = $request->body();
 
-    expect($body->getJsonFlags())->toEqual(JSON_THROW_ON_ERROR);
-});
+        $this->assertEquals(0, $body->getJsonFlags());
+    }
+}

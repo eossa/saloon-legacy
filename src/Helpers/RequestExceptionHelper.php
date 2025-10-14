@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
-use Throwable;
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Exceptions\Request\ClientException;
 use Saloon\Exceptions\Request\ServerException;
@@ -25,30 +23,62 @@ class RequestExceptionHelper
 {
     /**
      * Create the request exception from a response
+     *
+     * @param Exception|null $previous
+     *
+     * @return RequestException
      */
-    public static function create(Response $response, ?Throwable $previous = null): RequestException
+    public static function create(Response $response, Exception $previous = null)
     {
         $status = $response->status();
 
-        $requestException = match (true) {
+        switch (true) {
             // Built-in exceptions
-            $status === 401 => UnauthorizedException::class,
-            $status === 402 => PaymentRequiredException::class,
-            $status === 403 => ForbiddenException::class,
-            $status === 404 => NotFoundException::class,
-            $status === 405 => MethodNotAllowedException::class,
-            $status === 408 => RequestTimeOutException::class,
-            $status === 422 => UnprocessableEntityException::class,
-            $status === 429 => TooManyRequestsException::class,
-            $status === 500 => InternalServerErrorException::class,
-            $status === 503 => ServiceUnavailableException::class,
-            $status === 504 => GatewayTimeoutException::class,
+            case $status === 401:
+                $requestException = UnauthorizedException::class;
+                break;
+            case $status === 402:
+                $requestException = PaymentRequiredException::class;
+                break;
+            case $status === 403:
+                $requestException = ForbiddenException::class;
+                break;
+            case $status === 404:
+                $requestException = NotFoundException::class;
+                break;
+            case $status === 405:
+                $requestException = MethodNotAllowedException::class;
+                break;
+            case $status === 408:
+                $requestException = RequestTimeOutException::class;
+                break;
+            case $status === 422:
+                $requestException = UnprocessableEntityException::class;
+                break;
+            case $status === 429:
+                $requestException = TooManyRequestsException::class;
+                break;
+            case $status === 500:
+                $requestException = InternalServerErrorException::class;
+                break;
+            case $status === 503:
+                $requestException = ServiceUnavailableException::class;
+                break;
+            case $status === 504:
+                $requestException = GatewayTimeoutException::class;
+                break;
 
             // Fall-back exceptions
-            $response->serverError() => ServerException::class,
-            $response->clientError() => ClientException::class,
-            default => RequestException::class,
-        };
+            case $response->serverError():
+                $requestException = ServerException::class;
+                break;
+            case $response->clientError():
+                $requestException = ClientException::class;
+                break;
+            default:
+                $requestException = RequestException::class;
+                break;
+        }
 
         return new $requestException($response, null, 0, $previous);
     }

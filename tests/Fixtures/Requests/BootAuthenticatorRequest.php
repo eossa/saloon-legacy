@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -20,21 +18,29 @@ class BootAuthenticatorRequest extends Request implements HasBody
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
 
-    public function resolveEndpoint(): string
+    /**
+     * @return string
+     */
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
 
-    public function boot(PendingRequest $pendingRequest): void
+    /**
+     * @return void
+     */
+    public function boot(PendingRequest $pendingRequest)
     {
         $pendingRequest->withTokenAuth('howdy-partner');
     }

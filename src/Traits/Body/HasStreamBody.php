@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Psr\Http\Message\StreamInterface;
@@ -13,15 +11,22 @@ trait HasStreamBody
 
     /**
      * Body Repository
+     *
+     * @var StreamBodyRepository
      */
-    protected StreamBodyRepository $body;
+    protected $body;
 
     /**
      * Retrieve the data repository
+     *
+     * @return StreamBodyRepository
      */
-    public function body(): StreamBodyRepository
+    public function body()
     {
-        return $this->body ??= new StreamBodyRepository($this->defaultBody());
+        if (isset($this->body)) {
+            return $this->body;
+        }
+        return $this->body = new StreamBodyRepository($this->defaultBody());
     }
 
     /**
@@ -29,7 +34,7 @@ trait HasStreamBody
      *
      * @return StreamInterface|resource|null
      */
-    protected function defaultBody(): mixed
+    protected function defaultBody()
     {
         return null;
     }

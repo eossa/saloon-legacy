@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,18 +13,25 @@ class HasStringBodyRequest extends Request implements HasBodyContract
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    protected function defaultBody(): ?string
+    /**
+     * @return string|null
+     */
+    protected function defaultBody()
     {
         return 'name: Sam';
     }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Saloon\Http\PendingRequest;
@@ -13,23 +11,32 @@ trait HasFormBody
 
     /**
      * Body Repository
+     *
+     * @var FormBodyRepository
      */
-    protected FormBodyRepository $body;
+    protected $body;
 
     /**
      * Boot the HasFormBody trait
+     *
+     * @return void
      */
-    public function bootHasFormBody(PendingRequest $pendingRequest): void
+    public function bootHasFormBody(PendingRequest $pendingRequest)
     {
         $pendingRequest->headers()->add('Content-Type', 'application/x-www-form-urlencoded');
     }
 
     /**
      * Retrieve the data repository
+     *
+     * @return FormBodyRepository
      */
-    public function body(): FormBodyRepository
+    public function body()
     {
-        return $this->body ??= new FormBodyRepository($this->defaultBody());
+        if (isset($this->body)) {
+            return $this->body;
+        }
+        return $this->body = new FormBodyRepository($this->defaultBody());
     }
 
     /**
@@ -37,7 +44,7 @@ trait HasFormBody
      *
      * @return array<string, mixed>
      */
-    protected function defaultBody(): array
+    protected function defaultBody()
     {
         return [];
     }

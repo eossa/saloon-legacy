@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\OAuth2;
 
 use Saloon\Enums\Method;
@@ -18,23 +16,39 @@ class GetRefreshTokenRequest extends Request implements HasBody
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::POST;
+    protected $method = Method::POST;
+    /**
+     * @var OAuthConfig
+     */
+    private $oauthConfig;
+    /**
+     * @var string
+     */
+    private $refreshToken;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->oauthConfig->getTokenEndpoint();
     }
 
     /**
      * Requires the authorization code and OAuth 2 config.
+     *
+     * @param OAuthConfig $oauthConfig
+     * @param string $refreshToken
      */
-    public function __construct(protected OAuthConfig $oauthConfig, protected string $refreshToken)
+    public function __construct(OAuthConfig $oauthConfig, $refreshToken)
     {
-        //
+        $this->oauthConfig = $oauthConfig;
+        $this->refreshToken = $refreshToken;
     }
 
     /**
@@ -47,7 +61,7 @@ class GetRefreshTokenRequest extends Request implements HasBody
      *     client_secret: string,
      * }
      */
-    public function defaultBody(): array
+    public function defaultBody()
     {
         return [
             'grant_type' => 'refresh_token',

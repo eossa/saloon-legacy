@@ -1,7 +1,9 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Faking\MockClient;
@@ -26,292 +28,331 @@ use Saloon\Tests\Fixtures\Connectors\CustomFailHandlerConnector;
 use Saloon\Exceptions\Request\Statuses\InternalServerErrorException;
 use Saloon\Exceptions\Request\ServerException as SaloonServerException;
 
-test('you can use the to exception method to get the default RequestException exception with GuzzleSender', function () {
-    $response = TestConnector::make()->send(new ErrorRequest);
+class RequestExceptionTest extends TestCase
+{
+    public function testYouCanUseTheToExceptionMethodToGetTheDefaultRequestExceptionExceptionWithGuzzleSender()
+    {
+        $response = TestConnector::make()->send(new ErrorRequest());
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $this->assertInstanceOf(Response::class, $response);
 
-    $exception = $response->toException();
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf(InternalServerErrorException::class);
-    expect($exception)->toBeInstanceOf(SaloonServerException::class);
-    expect($exception->getMessage())->toEqual('Internal Server Error (500) Response: ' . $response->body());
-    expect($exception->getPrevious())->toBeInstanceOf(ServerException::class);
+        $this->assertInstanceOf(InternalServerErrorException::class, $exception);
+        $this->assertInstanceOf(SaloonServerException::class, $exception);
+        $this->assertEquals('Internal Server Error (500) Response: ' . $response->body(), $exception->getMessage());
+        $this->assertInstanceOf(ServerException::class, $exception->getPrevious());
 
-    $this->expectExceptionObject($exception);
+        $this->expectException(get_class($exception));
+        $this->expectExceptionMessage($exception->getMessage());
 
-    $response->throw();
-});
+        $response->throwException();
+    }
 
-test('you can use the to exception method to get the default RequestException exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Server Error'], 500),
-    ]);
+    public function testYouCanUseTheToExceptionMethodToGetTheDefaultRequestExceptionException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Server Error'], 500),
+        ]);
 
-    $response = TestConnector::make()->send(new UserRequest, $mockClient);
+        $response = TestConnector::make()->send(new UserRequest(), $mockClient);
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $this->assertInstanceOf(Response::class, $response);
 
-    $exception = $response->toException();
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf(InternalServerErrorException::class);
-    expect($exception)->toBeInstanceOf(SaloonServerException::class);
-    expect($exception->getMessage())->toEqual('Internal Server Error (500) Response: ' . $response->body());
+        $this->assertInstanceOf(InternalServerErrorException::class, $exception);
+        $this->assertInstanceOf(SaloonServerException::class, $exception);
+        $this->assertEquals('Internal Server Error (500) Response: ' . $response->body(), $exception->getMessage());
 
-    // Previous is null with the SimulatedSender
+        // Previous is null with the SimulatedSender
 
-    expect($exception->getPrevious())->toEqual(null);
+        $this->assertEquals(null, $exception->getPrevious());
 
-    $this->expectExceptionObject($exception);
+        $this->expectException(get_class($exception));
+        $this->expectExceptionMessage($exception->getMessage());
 
-    $response->throw();
-});
+        $response->throwException();
+    }
 
-test('it throws exceptions properly with promises with GuzzleSender', function () {
-    $promise = TestConnector::make()->sendAsync(new ErrorRequest);
+    public function testItThrowsExceptionsProperlyWithPromisesWithGuzzleSender()
+    {
+        $promise = TestConnector::make()->sendAsync(new ErrorRequest());
 
-    $correctInstance = false;
+        $correctInstance = false;
+        $caughtException = null;
 
-    $promise->otherwise(function (Throwable $exception) use (&$correctInstance) {
-        if ($exception instanceof RequestException) {
-            $correctInstance = true;
+        $promise->otherwise(function (Exception $exception) use (&$correctInstance) {
+            if ($exception instanceof RequestException) {
+                $correctInstance = true;
+            }
+        });
+
+        try {
+            $promise->wait();
+        } catch (Exception $exception) {
+            $caughtException = $exception;
         }
-    });
 
-    try {
-        $promise->wait();
-    } catch (Throwable $exception) {
-        expect($correctInstance)->toBeTrue();
-        expect($exception)->toBeInstanceOf(RequestException::class);
-        expect($exception->getResponse())->toBeInstanceOf(Response::class);
-        expect($exception->getMessage())->toEqual('Internal Server Error (500) Response: ' . $exception->getResponse()->body());
-        expect($exception->getPrevious())->toBeInstanceOf(ServerException::class);
+        $this->assertNotNull($caughtException);
+        $this->assertTrue($correctInstance);
+        $this->assertInstanceOf(RequestException::class, $caughtException);
+        $this->assertInstanceOf(Response::class, $caughtException->getResponse());
+        $this->assertEquals('Internal Server Error (500) Response: ' . $caughtException->getResponse()->body(), $caughtException->getMessage());
+        $this->assertInstanceOf(ServerException::class, $caughtException->getPrevious());
     }
-});
 
-test('it throws exceptions properly with promises', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Bad Request'], 422),
-    ]);
+    public function testItThrowsExceptionsProperlyWithPromises()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Bad Request'], 422),
+        ]);
 
-    $promise = TestConnector::make()->sendAsync(new ErrorRequest, $mockClient);
+        $promise = TestConnector::make()->sendAsync(new ErrorRequest(), $mockClient);
 
-    try {
-        $promise->wait();
-    } catch (Throwable $exception) {
-        expect($exception)->toBeInstanceOf(ClientException::class);
-        expect($exception->getResponse())->toBeInstanceOf(Response::class);
-        expect($exception->getMessage())->toEqual('Unprocessable Entity (422) Response: ' . $exception->getResponse()->body());
-        expect($exception->getPrevious())->toBeNull();
+        $caughtException = null;
+
+        try {
+            $promise->wait();
+        } catch (Exception $exception) {
+            $caughtException = $exception;
+        }
+
+        $this->assertNotNull($caughtException);
+        $this->assertInstanceOf(ClientException::class, $caughtException);
+        $this->assertInstanceOf(Response::class, $caughtException->getResponse());
+        $this->assertEquals('Unprocessable Entity (422) Response: ' . $caughtException->getResponse()->body(), $caughtException->getMessage());
+        $this->assertNull($caughtException->getPrevious());
     }
-});
 
-test('you can customise the exception handler on a connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Server Error'], 500),
-    ]);
+    public function testYouCanCustomiseTheExceptionHandlerOnAConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Server Error'], 500),
+        ]);
 
-    $response = CustomExceptionConnector::make()->send(new UserRequest, $mockClient);
-    $exception = $response->toException();
+        $response = CustomExceptionConnector::make()->send(new UserRequest(), $mockClient);
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf(ConnectorRequestException::class);
-    expect($exception->getMessage())->toEqual('Oh yee-naw.');
-});
+        $this->assertInstanceOf(ConnectorRequestException::class, $exception);
+        $this->assertEquals('Oh yee-naw.', $exception->getMessage());
+    }
 
-test('you can customise the exception handler on a request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Server Error'], 500),
-    ]);
+    public function testYouCanCustomiseTheExceptionHandlerOnARequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Server Error'], 500),
+        ]);
 
-    $response = TestConnector::make()->send(new CustomExceptionUserRequest, $mockClient);
-    $exception = $response->toException();
+        $response = TestConnector::make()->send(new CustomExceptionUserRequest(), $mockClient);
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf(CustomRequestException::class);
-    expect($exception->getMessage())->toEqual('Oh yee-naw.');
-});
+        $this->assertInstanceOf(CustomRequestException::class, $exception);
+        $this->assertEquals('Oh yee-naw.', $exception->getMessage());
+    }
 
-test('the request exception handler will always take priority', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Server Error'], 500),
-    ]);
+    public function testTheRequestExceptionHandlerWillAlwaysTakePriority()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Server Error'], 500),
+        ]);
 
-    $response = CustomExceptionConnector::make()->send(new CustomExceptionUserRequest, $mockClient);
-    $exception = $response->toException();
+        $response = CustomExceptionConnector::make()->send(new CustomExceptionUserRequest(), $mockClient);
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf(CustomRequestException::class);
-    expect($exception->getMessage())->toEqual('Oh yee-naw.');
-});
+        $this->assertInstanceOf(CustomRequestException::class, $exception);
+        $this->assertEquals('Oh yee-naw.', $exception->getMessage());
+    }
 
-test('you can customise if saloon should throw an exception on a connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Success']),
-        MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
-    ]);
+    public function testYouCanCustomiseIfSaloonShouldThrowAnExceptionOnAConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Success']),
+            MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
+        ]);
 
-    $responseA = BadResponseConnector::make()->send(new UserRequest, $mockClient);
+        $responseA = BadResponseConnector::make()->send(new UserRequest(), $mockClient);
 
-    expect($responseA->shouldThrowRequestException())->toBeFalse();
-    expect($responseA->toException())->toBeNull();
+        $this->assertFalse($responseA->shouldThrowRequestException());
+        $this->assertNull($responseA->toException());
 
-    $responseB = BadResponseConnector::make()->send(new UserRequest, $mockClient);
-    expect($responseB->shouldThrowRequestException())->toBeTrue();
-    $exceptionB = $responseB->toException();
+        $responseB = BadResponseConnector::make()->send(new UserRequest(), $mockClient);
+        $this->assertTrue($responseB->shouldThrowRequestException());
+        $exceptionB = $responseB->toException();
 
-    expect($exceptionB)->toBeInstanceOf(RequestException::class);
-    expect($exceptionB->getPendingRequest())->toBeInstanceOf(PendingRequest::class);
-    expect($exceptionB->getResponse())->toBeInstanceOf(Response::class);
-    expect($exceptionB->getMessage())->toEqual('OK (200) Response: ' . $exceptionB->getResponse()->body());
-    expect($exceptionB->getPrevious())->toBeNull();
-});
+        $this->assertInstanceOf(RequestException::class, $exceptionB);
+        $this->assertInstanceOf(PendingRequest::class, $exceptionB->getPendingRequest());
+        $this->assertInstanceOf(Response::class, $exceptionB->getResponse());
+        $this->assertEquals('OK (200) Response: ' . $exceptionB->getResponse()->body(), $exceptionB->getMessage());
+        $this->assertNull($exceptionB->getPrevious());
+    }
 
-test('you can customise if saloon should throw an exception on a request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Success']),
-        MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
-    ]);
+    public function testYouCanCustomiseIfSaloonShouldThrowAnExceptionOnARequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Success']),
+            MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
+        ]);
 
-    $responseA = TestConnector::make()->send(new BadResponseRequest, $mockClient);
+        $responseA = TestConnector::make()->send(new BadResponseRequest(), $mockClient);
 
-    expect($responseA->shouldThrowRequestException())->toBeFalse();
-    expect($responseA->toException())->toBeNull();
+        $this->assertFalse($responseA->shouldThrowRequestException());
+        $this->assertNull($responseA->toException());
 
-    $responseB = TestConnector::make()->send(new BadResponseRequest, $mockClient);
-    expect($responseB->shouldThrowRequestException())->toBeTrue();
-    $exceptionB = $responseB->toException();
+        $responseB = TestConnector::make()->send(new BadResponseRequest(), $mockClient);
+        $this->assertTrue($responseB->shouldThrowRequestException());
+        $exceptionB = $responseB->toException();
 
-    expect($exceptionB)->toBeInstanceOf(RequestException::class);
-    expect($exceptionB->getPendingRequest())->toBeInstanceOf(PendingRequest::class);
-    expect($exceptionB->getResponse())->toBeInstanceOf(Response::class);
-    expect($exceptionB->getMessage())->toEqual('OK (200) Response: ' . $exceptionB->getResponse()->body());
-    expect($exceptionB->getPrevious())->toBeNull();
-});
+        $this->assertInstanceOf(RequestException::class, $exceptionB);
+        $this->assertInstanceOf(PendingRequest::class, $exceptionB->getPendingRequest());
+        $this->assertInstanceOf(Response::class, $exceptionB->getResponse());
+        $this->assertEquals('OK (200) Response: ' . $exceptionB->getResponse()->body(), $exceptionB->getMessage());
+        $this->assertNull($exceptionB->getPrevious());
+    }
 
-test('when both the connector and request have custom logic to determine different failures they work together', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Success']),
-        MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
-        MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
-    ]);
+    public function testWhenBothTheConnectorAndRequestHaveCustomLogicToDetermineDifferentFailuresTheyWorkTogether()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Success']),
+            MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
+            MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
+        ]);
 
-    $responseA = BadResponseConnector::make()->send(new BadResponseRequest, $mockClient);
+        $responseA = BadResponseConnector::make()->send(new BadResponseRequest(), $mockClient);
 
-    expect($responseA->shouldThrowRequestException())->toBeFalse();
-    expect($responseA->toException())->toBeNull();
+        $this->assertFalse($responseA->shouldThrowRequestException());
+        $this->assertNull($responseA->toException());
 
-    $responseB = BadResponseConnector::make()->send(new BadResponseRequest, $mockClient);
-    expect($responseB->shouldThrowRequestException())->toBeTrue();
-    $exceptionB = $responseB->toException();
+        $responseB = BadResponseConnector::make()->send(new BadResponseRequest(), $mockClient);
+        $this->assertTrue($responseB->shouldThrowRequestException());
+        $exceptionB = $responseB->toException();
 
-    expect($exceptionB)->toBeInstanceOf(RequestException::class);
-    expect($exceptionB->getPendingRequest())->toBeInstanceOf(PendingRequest::class);
-    expect($exceptionB->getResponse())->toBeInstanceOf(Response::class);
-    expect($exceptionB->getMessage())->toEqual('OK (200) Response: ' . $exceptionB->getResponse()->body());
-    expect($exceptionB->getPrevious())->toBeNull();
+        $this->assertInstanceOf(RequestException::class, $exceptionB);
+        $this->assertInstanceOf(PendingRequest::class, $exceptionB->getPendingRequest());
+        $this->assertInstanceOf(Response::class, $exceptionB->getResponse());
+        $this->assertEquals('OK (200) Response: ' . $exceptionB->getResponse()->body(), $exceptionB->getMessage());
+        $this->assertNull($exceptionB->getPrevious());
 
-    $responseC = BadResponseConnector::make()->send(new BadResponseRequest, $mockClient);
-    expect($responseC->shouldThrowRequestException())->toBeTrue();
-    $exceptionC = $responseC->toException();
+        $responseC = BadResponseConnector::make()->send(new BadResponseRequest(), $mockClient);
+        $this->assertTrue($responseC->shouldThrowRequestException());
+        $exceptionC = $responseC->toException();
 
-    expect($exceptionC)->toBeInstanceOf(RequestException::class);
-    expect($exceptionC->getResponse())->toBeInstanceOf(Response::class);
-    expect($exceptionC->getMessage())->toEqual('OK (200) Response: ' . $exceptionC->getResponse()->body());
-    expect($exceptionC->getPrevious())->toBeNull();
-});
+        $this->assertInstanceOf(RequestException::class, $exceptionC);
+        $this->assertInstanceOf(Response::class, $exceptionC->getResponse());
+        $this->assertEquals('OK (200) Response: ' . $exceptionC->getResponse()->body(), $exceptionC->getMessage());
+        $this->assertNull($exceptionC->getPrevious());
+    }
 
-test('you can customise if saloon determines if a request has failed on a connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Success']),
-        MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
-    ]);
+    public function testYouCanCustomiseIfSaloonDeterminesIfARequestHasFailedOnAConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Success']),
+            MockResponse::make(['message' => 'Error: Invalid Cowboy Hat']),
+        ]);
 
-    $responseA = CustomFailHandlerConnector::make()->send(new UserRequest, $mockClient);
+        $responseA = CustomFailHandlerConnector::make()->send(new UserRequest(), $mockClient);
 
-    expect($responseA->failed())->toBeFalse();
+        $this->assertFalse($responseA->failed());
 
-    $responseB = CustomFailHandlerConnector::make()->send(new UserRequest, $mockClient);
+        $responseB = CustomFailHandlerConnector::make()->send(new UserRequest(), $mockClient);
 
-    expect($responseB->failed())->toBeTrue();
-});
+        $this->assertTrue($responseB->failed());
+    }
 
-test('you can customise if saloon determines if a request has failed on a request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Success']),
-        MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
-    ]);
+    public function testYouCanCustomiseIfSaloonDeterminesIfARequestHasFailedOnARequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Success']),
+            MockResponse::make(['message' => 'Yee-naw: Horse Not Found']),
+        ]);
 
-    $responseA = TestConnector::make()->send(new CustomFailHandlerRequest, $mockClient);
+        $responseA = TestConnector::make()->send(new CustomFailHandlerRequest(), $mockClient);
 
-    expect($responseA->failed())->toBeFalse();
+        $this->assertFalse($responseA->failed());
 
-    $responseB = TestConnector::make()->send(new CustomFailHandlerRequest, $mockClient);
+        $responseB = TestConnector::make()->send(new CustomFailHandlerRequest(), $mockClient);
 
-    expect($responseB->failed())->toBeTrue();
-});
+        $this->assertTrue($responseB->failed());
+    }
 
-test('a request can mark a request as not failed', function () {
-    $response = TestConnector::make()->send(new NotFoundFailedRequest);
+    public function testARequestCanMarkARequestAsNotFailed()
+    {
+        $response = TestConnector::make()->send(new NotFoundFailedRequest());
 
-    expect($response->failed())->toBeFalse();
-});
+        $this->assertFalse($response->failed());
+    }
 
-test('a request can mark a request as not failed with asynchronous requests', function () {
-    $response = TestConnector::make()->sendAsync(new NotFoundFailedRequest)->wait();
+    public function testARequestCanMarkARequestAsNotFailedWithAsynchronousRequests()
+    {
+        $response = TestConnector::make()->sendAsync(new NotFoundFailedRequest())->wait();
 
-    expect($response->failed())->toBeFalse();
-});
+        $this->assertFalse($response->failed());
+    }
 
-test('a request can mark a request as not failed with pools', function () {
-    $responseCount = 0;
-    $exceptionCount = 0;
+    public function testARequestCanMarkARequestAsNotFailedWithPools()
+    {
+        $responseCount = 0;
+        $exceptionCount = 0;
 
-    $pool = TestConnector::make()->pool([
-        new NotFoundFailedRequest,
-    ]);
+        $pool = TestConnector::make()->pool([
+            new NotFoundFailedRequest(),
+        ]);
 
-    $pool->withResponseHandler(function (Response $response) use (&$responseCount) {
-        expect($response)->toBeInstanceOf(Response::class);
-        expect($response->status())->toBe(404);
+        $pool->withResponseHandler(function (Response $response) use (&$responseCount) {
+            $this->assertInstanceOf(Response::class, $response);
+            $this->assertEquals(404, $response->status());
 
-        $responseCount++;
-    })->withExceptionHandler(function (RequestException $exception) use (&$exceptionCount) {
-        $response = $exception->getResponse();
+            $responseCount++;
+        })->withExceptionHandler(function (RequestException $exception) use (&$exceptionCount) {
+            $response = $exception->getResponse();
 
-        expect($response)->toBeInstanceOf(Response::class);
-        expect($response->status())->toBe(404);
+            $this->assertInstanceOf(Response::class, $response);
+            $this->assertEquals(404, $response->status());
 
-        $exceptionCount++;
-    });
+            $exceptionCount++;
+        });
 
-    $promise = $pool->send();
+        $promise = $pool->send();
 
-    expect($promise)->toBeInstanceOf(PromiseInterface::class);
+        $this->assertInstanceOf(PromiseInterface::class, $promise);
 
-    $promise->wait();
+        $promise->wait();
 
-    expect($responseCount)->toEqual(1);
-    expect($exceptionCount)->toEqual(0);
-});
+        $this->assertEquals(1, $responseCount);
+        $this->assertEquals(0, $exceptionCount);
+    }
 
-test('the sender will throw a FatalRequestException if it cannot connect to a site using synchronous', function (string $url) {
-    $connector = new TestConnector($url);
-    $request = new UserRequest();
+    public function urlDataProvider()
+    {
+        return [
+            ['https://saloon.saloon.test'],
+            ['https://saloon.doesnt-exist'],
+        ];
+    }
 
-    $this->expectException(FatalRequestException::class);
+    /**
+     * @dataProvider urlDataProvider
+     */
+    public function testTheSenderWillThrowAFatalRequestExceptionIfItCannotConnectToASiteUsingSynchronous($url)
+    {
+        $connector = new TestConnector($url);
+        $request = new UserRequest();
 
-    $connector->send($request);
-})->with([
-    'https://saloon.saloon.test',
-    'https://saloon.doesnt-exist',
-]);
+        $this->expectException(FatalRequestException::class);
 
-test('the sender will throw a FatalRequestException if it cannot connect to a site using asynchronous', function (string $url) {
-    $connector = new TestConnector($url);
-    $request = new UserRequest();
+        $connector->send($request);
+    }
 
-    $this->expectException(FatalRequestException::class);
+    /**
+     * @dataProvider urlDataProvider
+     */
+    public function testTheSenderWillThrowAFatalRequestExceptionIfItCannotConnectToASiteUsingAsynchronous($url)
+    {
+        $connector = new TestConnector($url);
+        $request = new UserRequest();
 
-    $connector->sendAsync($request)->wait();
-})->with([
-    'https://saloon.saloon.test',
-    'https://saloon.doesnt-exist',
-]);
+        $this->expectException(FatalRequestException::class);
+
+        $connector->sendAsync($request)->wait();
+    }
+}

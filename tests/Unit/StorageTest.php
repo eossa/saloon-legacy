@@ -1,74 +1,100 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Helpers\Storage;
 use League\Flysystem\Filesystem;
 use Saloon\Exceptions\DirectoryNotFoundException;
-use League\Flysystem\Local\LocalFilesystemAdapter;
+use League\Flysystem\Adapter\Local;
+use PHPUnit\Framework\TestCase;
 
-test('it will throw an exception if the base directory does not exist', function () {
-    new Storage('example');
-})->throws(DirectoryNotFoundException::class, 'The directory "example" does not exist or is not a valid directory.');
+class StorageTest extends TestCase
+{
+    public function testItWillThrowAnExceptionIfTheBaseDirectoryDoesNotExist()
+    {
+        $this->expectException(DirectoryNotFoundException::class);
+        $this->expectExceptionMessage('The directory "example" does not exist or is not a valid directory.');
 
-test('you can check if a file exists', function () {
-    $storage = new Storage('tests');
+        new Storage('example');
+    }
 
-    expect($storage->exists('Pest.php'))->toBeTrue();
-    expect($storage->missing('Pest.php'))->toBeFalse();
-});
+    public function testYouCanCheckIfAFileExists()
+    {
+        $storage = new Storage('tests');
 
-test('you can check if a file is missing', function () {
-    $storage = new Storage('tests');
+        $this->assertTrue($storage->exists('../composer.json'));
+        $this->assertFalse($storage->missing('../composer.json'));
+    }
 
-    expect($storage->exists('HelloWorld.php'))->toBeFalse();
-    expect($storage->missing('HelloWorld.php'))->toBeTrue();
-});
+    public function testYouCanCheckIfAFileIsMissing()
+    {
+        $storage = new Storage('tests');
 
-test('you can retrieve a file from storage', function () {
-    $storage = new Storage('tests');
+        $this->assertFalse($storage->exists('HelloWorld.php'));
+        $this->assertTrue($storage->missing('HelloWorld.php'));
+    }
 
-    $file = $storage->get('Pest.php');
+    public function testYouCanRetrieveAFileFromStorage()
+    {
+        $storage = new Storage('tests');
 
-    expect($file)->toEqual(file_get_contents('tests/Pest.php'));
-});
+        $file = $storage->get('helpers.php');
 
-test('you can put a file in storage', function () {
-    $filesystem = new Filesystem(new LocalFilesystemAdapter('tests/Fixtures/Saloon/Testing'));
-    $filesystem->deleteDirectory('/');
-    $filesystem->createDirectory('/');
+        $this->assertEquals(file_get_contents('tests/helpers.php'), $file);
+    }
 
-    $storage = new Storage('tests/Fixtures/Saloon/Testing');
+    public function testYouCanPutAFileInStorage()
+    {
+        $filesystem = new Filesystem(new Local('tests/Fixtures/Saloon/Testing'));
+        $content = $filesystem->listContents('/', true);
+        foreach ($content as $file) {
+            if ($file['type'] === 'dir') {
+                $filesystem->deleteDir($file['path']);
+            } elseif ($file['type'] === 'file' && $filesystem->has($file['path'])) {
+                $filesystem->delete($file['path']);
+            }
+        }
 
-    expect($storage->exists('example.txt'))->toBeFalse();
+        $storage = new Storage('tests/Fixtures/Saloon/Testing');
 
-    $storage->put('example.txt', 'Hello World');
+        $this->assertFalse($storage->exists('example.txt'));
 
-    expect($storage->exists('example.txt'))->toBeTrue();
+        $storage->put('example.txt', 'Hello World');
 
-    expect($storage->get('example.txt'))->toEqual('Hello World');
-});
+        $this->assertTrue($storage->exists('example.txt'));
 
-test('it will create a file with nested folders', function () {
-    $filesystem = new Filesystem(new LocalFilesystemAdapter('tests/Fixtures/Saloon/Testing'));
-    $filesystem->deleteDirectory('/');
-    $filesystem->createDirectory('/');
+        $this->assertEquals('Hello World', $storage->get('example.txt'));
+    }
 
-    $path = 'Testing' . DIRECTORY_SEPARATOR . 'some' . DIRECTORY_SEPARATOR . 'other' . DIRECTORY_SEPARATOR . 'directories' . DIRECTORY_SEPARATOR . 'example.txt';
+    public function testItWillCreateAFileWithNestedFolders()
+    {
+        $filesystem = new Filesystem(new Local('tests/Fixtures/Saloon/Testing'));
+        $content = $filesystem->listContents('/', true);
+        foreach ($content as $file) {
+            if ($file['type'] === 'dir') {
+                $filesystem->deleteDir($file['path']);
+            } elseif ($file['type'] === 'file' && $filesystem->has($file['path'])) {
+                $filesystem->delete($file['path']);
+            }
+        }
 
-    $storage = new Storage('tests' . DIRECTORY_SEPARATOR . 'Fixtures' . DIRECTORY_SEPARATOR . 'Saloon');
+        $path = 'Testing' . DIRECTORY_SEPARATOR . 'some' . DIRECTORY_SEPARATOR . 'other' . DIRECTORY_SEPARATOR . 'directories' . DIRECTORY_SEPARATOR . 'example.txt';
 
-    expect($storage->exists($path))->toBeFalse();
+        $storage = new Storage('tests' . DIRECTORY_SEPARATOR . 'Fixtures' . DIRECTORY_SEPARATOR . 'Saloon');
 
-    $storage->put($path, 'Hello World');
+        $this->assertFalse($storage->exists($path));
 
-    expect($storage->exists($path))->toBeTrue();
+        $storage->put($path, 'Hello World');
 
-    expect($storage->get($path))->toEqual('Hello World');
-});
+        $this->assertTrue($storage->exists($path));
 
-test('you can get the base directory path from the storage class', function () {
-    $storage = new Storage('tests/Fixtures/Saloon');
+        $this->assertEquals('Hello World', $storage->get($path));
+    }
 
-    expect($storage->getBaseDirectory())->toEqual('tests/Fixtures/Saloon');
-});
+    public function testYouCanGetTheBaseDirectoryPathFromTheStorageClass()
+    {
+        $storage = new Storage('tests/Fixtures/Saloon');
+
+        $this->assertEquals('tests/Fixtures/Saloon', $storage->getBaseDirectory());
+    }
+}

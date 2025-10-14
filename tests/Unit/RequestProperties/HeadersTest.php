@@ -1,86 +1,93 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\RequestProperties;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\ArrayStore;
 use Saloon\Tests\Fixtures\Requests\HeaderRequest;
 use Saloon\Tests\Fixtures\Connectors\HeaderConnector;
 
-test('default headers are merged in from a request', function () {
-    $request = new HeaderRequest();
+class HeadersTest extends TestCase
+{
+    public function testDefaultHeadersAreMergedInFromARequest()
+    {
+        $request = new HeaderRequest();
 
-    $headers = $request->headers();
+        $headers = $request->headers();
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
-    expect($headers)->toEqual(new ArrayStore(['X-Custom-Header' => 'Howdy']));
-});
+        $this->assertInstanceOf(ArrayStore::class, $headers);
+        $this->assertEquals(new ArrayStore(['X-Custom-Header' => 'Howdy']), $headers);
+    }
 
-test('headers can be managed on a request', function () {
-    $request = new HeaderRequest();
+    public function testHeadersCanBeManagedOnARequest()
+    {
+        $request = new HeaderRequest();
 
-    $headers = $request->headers()->add('Content-Type', 'custom/saloon');
+        $headers = $request->headers()->add('Content-Type', 'custom/saloon');
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    $headers = $request->headers()->merge(['X-Merge-A' => 'Hello', 'Complex' => ['A', 'B']], ['X-Merge-B' => 'Goodbye', 'Content-Type' => 'overwritten']);
+        $headers = $request->headers()->merge(['X-Merge-A' => 'Hello', 'Complex' => ['A', 'B']], ['X-Merge-B' => 'Goodbye', 'Content-Type' => 'overwritten']);
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    $headers = $request->headers()->remove('X-Merge-B');
+        $headers = $request->headers()->remove('X-Merge-B');
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    expect($headers->all())->toEqual([
-        'X-Custom-Header' => 'Howdy',
-        'Content-Type' => 'overwritten',
-        'X-Merge-A' => 'Hello',
-        'Complex' => ['A', 'B'],
-    ]);
+        $this->assertEquals([
+            'X-Custom-Header' => 'Howdy',
+            'Content-Type' => 'overwritten',
+            'X-Merge-A' => 'Hello',
+            'Complex' => ['A', 'B'],
+        ], $headers->all());
 
-    expect($headers->get('X-Custom-Header'))->toEqual('Howdy');
-    expect($headers->get('Complex'))->toEqual(['A', 'B']);
+        $this->assertEquals('Howdy', $headers->get('X-Custom-Header'));
+        $this->assertEquals(['A', 'B'], $headers->get('Complex'));
 
-    $headers = $request->headers()->set(['X-Different' => 'Yo']);
+        $headers = $request->headers()->set(['X-Different' => 'Yo']);
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    expect($request->headers()->all())->toEqual(['X-Different' => 'Yo']);
+        $this->assertEquals(['X-Different' => 'Yo'], $request->headers()->all());
 
-    expect($request->headers()->isEmpty())->toBeFalse();
-    expect($request->headers()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($request->headers()->isEmpty());
+        $this->assertTrue($request->headers()->isNotEmpty());
+    }
 
-test('headers can be managed on a connector', function () {
-    $connector = new HeaderConnector();
+    public function testHeadersCanBeManagedOnAConnector()
+    {
+        $connector = new HeaderConnector();
 
-    $headers = $connector->headers()->add('Content-Type', 'custom/saloon');
+        $headers = $connector->headers()->add('Content-Type', 'custom/saloon');
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    $headers = $connector->headers()->merge(['X-Merge-A' => 'Hello', 'Complex' => ['A', 'B']], ['X-Merge-B' => 'Goodbye', 'Content-Type' => 'overwritten']);
+        $headers = $connector->headers()->merge(['X-Merge-A' => 'Hello', 'Complex' => ['A', 'B']], ['X-Merge-B' => 'Goodbye', 'Content-Type' => 'overwritten']);
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    $headers = $connector->headers()->remove('X-Merge-B');
+        $headers = $connector->headers()->remove('X-Merge-B');
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    expect($headers->all())->toEqual([
-        'X-Connector-Header' => 'Sam',
-        'Content-Type' => 'overwritten',
-        'X-Merge-A' => 'Hello',
-        'Complex' => ['A', 'B'],
-    ]);
+        $this->assertEquals([
+            'X-Connector-Header' => 'Sam',
+            'Content-Type' => 'overwritten',
+            'X-Merge-A' => 'Hello',
+            'Complex' => ['A', 'B'],
+        ], $headers->all());
 
-    expect($headers->get('X-Connector-Header'))->toEqual('Sam');
-    expect($headers->get('Complex'))->toEqual(['A', 'B']);
+        $this->assertEquals('Sam', $headers->get('X-Connector-Header'));
+        $this->assertEquals(['A', 'B'], $headers->get('Complex'));
 
-    $headers = $connector->headers()->set(['X-Different' => 'Yo']);
+        $headers = $connector->headers()->set(['X-Different' => 'Yo']);
 
-    expect($headers)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $headers);
 
-    expect($connector->headers()->all())->toEqual(['X-Different' => 'Yo']);
+        $this->assertEquals(['X-Different' => 'Yo'], $connector->headers()->all());
 
-    expect($connector->headers()->isEmpty())->toBeFalse();
-    expect($connector->headers()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($connector->headers()->isEmpty());
+        $this->assertTrue($connector->headers()->isNotEmpty());
+    }
+}

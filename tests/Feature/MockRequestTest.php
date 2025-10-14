@@ -1,11 +1,14 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use Exception;
+use PHPUnit\Framework\TestCase;
 use Saloon\MockConfig;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use League\Flysystem\Filesystem;
+use League\Flysystem\Adapter\Local;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Exceptions\FixtureException;
@@ -13,7 +16,6 @@ use Saloon\Tests\Fixtures\Mocking\UserFixture;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Requests\ErrorRequest;
-use League\Flysystem\Local\LocalFilesystemAdapter;
 use Saloon\Tests\Fixtures\Mocking\SafeUserFixture;
 use Saloon\Exceptions\NoMockResponseFoundException;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
@@ -30,712 +32,759 @@ use Saloon\Tests\Fixtures\Connectors\DifferentServiceConnector;
 use Saloon\Tests\Fixtures\Requests\DifferentServiceUserRequest;
 use Saloon\Tests\Fixtures\Requests\QueryParameterConnectorRequest;
 
-$filesystem = new Filesystem(new LocalFilesystemAdapter('tests/Fixtures/Saloon/Testing'));
-
-beforeEach(function () use ($filesystem) {
-    MockConfig::setFixturePath('tests/Fixtures/Saloon/Testing');
-
-    $filesystem->deleteDirectory('/');
-    $filesystem->createDirectory('/');
-});
-
-afterEach(function () {
-    MockConfig::setFixturePath('tests/Fixtures/Saloon');
-});
-
-test('a request can be mocked with a sequence', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam'], 200, ['X-Foo' => 'Bar']),
-        MockResponse::make(['name' => 'Alex']),
-        MockResponse::make(['error' => 'Server Unavailable'], 500),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-
-    $responseA = $connector->send(new UserRequest);
-
-    expect($responseA)->toBeInstanceOf(Response::class);
-    expect($responseA->isMocked())->toBeTrue();
-    expect($responseA->isFaked())->toBeTrue();
-    expect($responseA->isCached())->toBeFalse();
-    expect($responseA->json())->toEqual(['name' => 'Sam']);
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->getFakeResponse())->toBeInstanceOf(MockResponse::class);
-    expect($responseA->headers()->all())->toEqual(['X-Foo' => 'Bar']);
-
-    $responseB = $connector->send(new UserRequest);
-
-    expect($responseB)->toBeInstanceOf(Response::class);
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->isFaked())->toBeTrue();
-    expect($responseB->isCached())->toBeFalse();
-    expect($responseB->json())->toEqual(['name' => 'Alex']);
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->getFakeResponse())->toBeInstanceOf(MockResponse::class);
-
-    $responseC = $connector->send(new UserRequest);
-
-    expect($responseC)->toBeInstanceOf(Response::class);
-    expect($responseC->isMocked())->toBeTrue();
-    expect($responseC->isFaked())->toBeTrue();
-    expect($responseC->isCached())->toBeFalse();
-    expect($responseC->json())->toEqual(['error' => 'Server Unavailable']);
-    expect($responseC->status())->toEqual(500);
-    expect($responseC->getFakeResponse())->toBeInstanceOf(MockResponse::class);
-
-    $this->expectException(NoMockResponseFoundException::class);
-    $this->expectExceptionMessage('Saloon was unable to guess a mock response for your request [https://tests.saloon.dev/api/user], consider using a wildcard url mock or a connector mock.');
-
-    $connector->send(new UserRequest);
-});
-
-test('a request can be mocked with a connector defined', function () {
-    $responseA = MockResponse::make(['name' => 'Sammyjo20']);
-    $responseB = MockResponse::make(['name' => 'Alex']);
-
-    $connectorA = new TestConnector;
-    $connectorB = new QueryParameterConnector;
-
-    $connectorARequest = new UserRequest;
-    $connectorBRequest = new QueryParameterConnectorRequest;
-
-    $mockClient = new MockClient([
-        TestConnector::class => $responseA,
-        QueryParameterConnector::class => $responseB,
-    ]);
-
-    $responseA = $connectorA->send($connectorARequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeTrue();
-    expect($responseA->json())->toEqual(['name' => 'Sammyjo20']);
-    expect($responseA->status())->toEqual(200);
-
-    $responseB = $connectorB->send($connectorBRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->json())->toEqual(['name' => 'Alex']);
-    expect($responseB->status())->toEqual(200);
-});
-
-test('a request can be mocked with a request defined', function () {
-    $responseA = MockResponse::make(['name' => 'Sammyjo20']);
-    $responseB = MockResponse::make(['name' => 'Alex']);
-
-    $connectorA = new TestConnector;
-    $connectorB = new QueryParameterConnector;
-
-    $requestA = new UserRequest;
-    $requestB = new QueryParameterConnectorRequest;
-
-    $mockClient = new MockClient([
-        UserRequest::class => $responseA,
-        QueryParameterConnectorRequest::class => $responseB,
-    ]);
-
-    $responseA = $connectorA->send($requestA, $mockClient);
-
-    expect($responseA->isMocked())->toBeTrue();
-    expect($responseA->json())->toEqual(['name' => 'Sammyjo20']);
-    expect($responseA->status())->toEqual(200);
-
-    $responseB = $connectorB->send($requestB, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->json())->toEqual(['name' => 'Alex']);
-    expect($responseB->status())->toEqual(200);
-});
-
-test('a request can be mocked with a url defined', function () {
-    $responseA = MockResponse::make(['name' => 'Sammyjo20']);
-    $responseB = MockResponse::make(['name' => 'Alex']);
-    $responseC = MockResponse::make(['error' => 'Server Broken'], 500);
-
-    $connectorA = new TestConnector;
-    $connectorB = new DifferentServiceConnector;
-
-    $requestA = new UserRequest;
-    $requestB = new ErrorRequest;
-    $requestC = new DifferentServiceUserRequest;
-
-    $mockClient = new MockClient([
-        'tests.saloon.dev/api/user' => $responseA, // Test Exact Route
-        'tests.saloon.dev/*' => $responseB, // Test Wildcard Routes
-        'google.com/*' => $responseC, // Test Different Route,
-    ]);
-
-    $responseA = $connectorA->send($requestA, $mockClient);
-
-    expect($responseA->isMocked())->toBeTrue();
-    expect($responseA->json())->toEqual(['name' => 'Sammyjo20']);
-    expect($responseA->status())->toEqual(200);
-
-    $responseB = $connectorA->send($requestB, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->json())->toEqual(['name' => 'Alex']);
-    expect($responseB->status())->toEqual(200);
-
-    $responseC = $connectorB->send($requestC, $mockClient);
-
-    expect($responseC->isMocked())->toBeTrue();
-    expect($responseC->json())->toEqual(['error' => 'Server Broken']);
-    expect($responseC->status())->toEqual(500);
-});
-
-test('you can create wildcard url mocks', function () {
-    $responseA = MockResponse::make(['name' => 'Sammyjo20']);
-    $responseB = MockResponse::make(['name' => 'Alex']);
-    $responseC = MockResponse::make(['error' => 'Server Broken'], 500);
-
-    $connectorA = new TestConnector;
-    $connectorB = new DifferentServiceConnector;
-
-    $requestA = new UserRequest;
-    $requestB = new ErrorRequest;
-    $requestC = new DifferentServiceUserRequest;
-
-    $mockClient = new MockClient([
-        'tests.saloon.dev/api/user' => $responseA, // Test Exact Route
-        'tests.saloon.dev/*' => $responseB, // Test Wildcard Routes
-        '*' => $responseC,
-    ]);
-
-    $responseA = $connectorA->send($requestA, $mockClient);
-
-    expect($responseA->isMocked())->toBeTrue();
-    expect($responseA->json())->toEqual(['name' => 'Sammyjo20']);
-    expect($responseA->status())->toEqual(200);
-
-    $responseB = $connectorA->send($requestB, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->json())->toEqual(['name' => 'Alex']);
-    expect($responseB->status())->toEqual(200);
-
-    $responseC = $connectorB->send($requestC, $mockClient);
-
-    expect($responseC->isMocked())->toBeTrue();
-    expect($responseC->json())->toEqual(['error' => 'Server Broken']);
-    expect($responseC->status())->toEqual(500);
-});
-
-test('you can use a closure for the mock response', function () {
-    $sequenceMock = new MockClient([
-        function (PendingRequest $pendingRequest): MockResponse {
-            return new MockResponse(['request' => $pendingRequest->getUrl()]);
-        },
-    ]);
-
-    $sequenceResponse = connector()->send(new UserRequest, $sequenceMock);
-
-    expect($sequenceResponse->isMocked())->toBeTrue();
-    expect($sequenceResponse->json())->toEqual(['request' => 'https://tests.saloon.dev/api/user']);
-
-    // Connector mock
-
-    $connectorMock = new MockClient([
-        TestConnector::class => function (PendingRequest $pendingRequest): MockResponse {
-            return new MockResponse(['request' => $pendingRequest->getUrl()]);
-        },
-    ]);
-
-    $connectorResponse = connector()->send(new UserRequest, $connectorMock);
-
-    expect($connectorResponse->isMocked())->toBeTrue();
-    expect($connectorResponse->json())->toEqual(['request' => 'https://tests.saloon.dev/api/user']);
-
-    // Request mock
-
-    $requestMock = new MockClient([
-        UserRequest::class => function (PendingRequest $pendingRequest): MockResponse {
-            return new MockResponse(['request' => $pendingRequest->getUrl()]);
-        },
-    ]);
-
-    $requestResponse = connector()->send(new UserRequest, $requestMock);
-
-    expect($requestResponse->isMocked())->toBeTrue();
-    expect($requestResponse->json())->toEqual(['request' => 'https://tests.saloon.dev/api/user']);
-
-    // URL mock
-
-    $urlMock = new MockClient([
-        'tests.saloon.dev/*' => function (PendingRequest $pendingRequest): MockResponse {
-            return new MockResponse(['request' => $pendingRequest->getUrl()]);
-        },
-    ]);
-
-    $urlResponse = connector()->send(new UserRequest, $urlMock);
-
-    expect($urlResponse->isMocked())->toBeTrue();
-    expect($urlResponse->json())->toEqual(['request' => 'https://tests.saloon.dev/api/user']);
-});
-
-test('you can use a callable class as the mock response', function () {
-    $mockClient = new MockClient([
-        UserRequest::class => new CallableMockResponse,
-    ]);
-
-    $sequenceResponse = connector()->send(new UserRequest, $mockClient);
-
-    expect($sequenceResponse->isMocked())->toBeTrue();
-    expect($sequenceResponse->json())->toEqual(['request_class' => UserRequest::class]);
-});
-
-test('a fixture can be used with a mock sequence', function () {
-    $mockClient = new MockClient([
-        MockResponse::fixture('user'),
-        MockResponse::fixture('user'),
-    ]);
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    $responseB = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
-
-test('a fixture can be used with a connector mock', function () {
-    $mockClient = new MockClient([
-        TestConnector::class => MockResponse::fixture('connector'),
-    ]);
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    $responseB = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    // Even though it's a different request, it should use the same fixture
-
-    $responseC = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($responseC->isMocked())->toBeTrue();
-    expect($responseC->status())->toEqual(200);
-    expect($responseC->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
-
-test('a fixture can be used with a request mock', function () use ($filesystem) {
-    $mockClient = new MockClient([
-        UserRequest::class => MockResponse::fixture('user'),
-    ]);
-
-    expect($filesystem->fileExists('user.json'))->toBeFalse();
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    expect($filesystem->fileExists('user.json'))->toBeTrue();
-
-    $responseB = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
-
-test('a fixture can be used with a url mock', function () use ($filesystem) {
-    $mockClient = new MockClient([
-        'tests.saloon.dev/api/user' => MockResponse::fixture('user'), // Test Exact Route
-        'tests.saloon.dev/*' => MockResponse::fixture('other'), // Test Wildcard Routes
-    ]);
-
-    expect($filesystem->fileExists('user.json'))->toBeFalse();
-    expect($filesystem->fileExists('other.json'))->toBeFalse();
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($filesystem->fileExists('user.json'))->toBeTrue();
-    expect($filesystem->fileExists('other.json'))->toBeFalse();
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    $responseB = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($filesystem->fileExists('user.json'))->toBeTrue();
-    expect($filesystem->fileExists('other.json'))->toBeTrue();
-
-    expect($responseB->isMocked())->toBeFalse();
-    expect($responseB->status())->toEqual(500);
-    expect($responseB->json())->toEqual([
-        'message' => 'Fake Error',
-    ]);
-
-    // This should use the first mock
-
-    $responseC = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseC->isMocked())->toBeTrue();
-    expect($responseC->status())->toEqual(200);
-    expect($responseC->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    // Another error request should use the "other" mock
-
-    $responseD = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($responseD->isMocked())->toBeTrue();
-    expect($responseD->status())->toEqual(500);
-    expect($responseD->json())->toEqual([
-        'message' => 'Fake Error',
-    ]);
-});
-
-test('a fixture can be used with a wildcard url mock', function () {
-    $mockClient = new MockClient([
-        '*' => MockResponse::fixture('user'), // Test Exact Route
-    ]);
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    $responseB = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
-
-test('a fixture can be used within a closure mock', function () use ($filesystem) {
-    $mockClient = new MockClient([
-        '*' => function (PendingRequest $pendingRequest) {
-            if ($pendingRequest->getRequest() instanceof UserRequest) {
-                return MockResponse::fixture('user');
+class MockRequestTest extends TestCase
+{
+    private $filesystem;
+
+    protected function setUp()
+    {
+        parent::setUp();
+
+        $this->filesystem = new Filesystem(new Local('tests/Fixtures/Saloon/Testing'));
+
+        MockConfig::setFixturePath('tests/Fixtures/Saloon/Testing');
+
+        $content = $this->filesystem->listContents('/', true);
+        foreach ($content as $file) {
+            if ($file['type'] === 'dir') {
+                $this->filesystem->deleteDir($file['path']);
+            } elseif ($file['type'] === 'file' && $this->filesystem->has($file['path'])) {
+                $this->filesystem->delete($file['path']);
             }
-
-            return MockResponse::fixture('other');
-        },
-    ]);
-
-    expect($filesystem->fileExists('user.json'))->toBeFalse();
-    expect($filesystem->fileExists('other.json'))->toBeFalse();
-
-    $responseA = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    $responseB = connector()->send(new UserRequest, $mockClient);
-
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-
-    // Now we'll test a different route
-
-    $responseC = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($responseC->isMocked())->toBeFalse();
-    expect($responseC->status())->toEqual(500);
-    expect($responseC->json())->toEqual([
-        'message' => 'Fake Error',
-    ]);
-
-    // Another error request should use the "other" mock
-
-    $responseD = connector()->send(new ErrorRequest, $mockClient);
-
-    expect($responseD->isMocked())->toBeTrue();
-    expect($responseD->status())->toEqual(500);
-    expect($responseD->json())->toEqual([
-        'message' => 'Fake Error',
-    ]);
-});
-
-test('when using the AlwaysThrowRequest trait the response recorder will still record the response', function () {
-    $mockClient = new MockClient([
-        AlwaysThrowRequest::class => MockResponse::fixture('error'),
-    ]);
-
-    $exception = null;
-
-    try {
-        connector()->send(new AlwaysThrowRequest, $mockClient);
-    } catch (Exception $exception) {
-        //
+        }
     }
 
-    expect($exception)->toBeInstanceOf(RequestException::class);
+    protected function tearDown()
+    {
+        MockConfig::setFixturePath('tests/Fixtures/Saloon');
 
-    $fixture = MockResponse::fixture('error')->getMockResponse();
+        parent::tearDown();
+    }
 
-    expect($fixture)->toBeInstanceOf(MockResponse::class);
-});
+    public function testARequestCanBeMockedWithASequence()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam'], 200, ['X-Foo' => 'Bar']),
+            MockResponse::make(['name' => 'Alex']),
+            MockResponse::make(['error' => 'Server Unavailable'], 500),
+        ]);
 
-test('a fixture can record the file data from a request that returns a file download', function () {
-    $mockClient = new MockClient([
-        FileDownloadRequest::class => MockResponse::fixture('file'),
-    ]);
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
 
-    $requestA = new FileDownloadRequest;
-    $responseA = connector()->send($requestA, $mockClient);
+        $responseA = $connector->send(new UserRequest());
 
-    expect($responseA->body())->toEqual(file_get_contents('tests/Fixtures/Files/test.pdf'));
+        $this->assertInstanceOf(Response::class, $responseA);
+        $this->assertTrue($responseA->isMocked());
+        $this->assertTrue($responseA->isFaked());
+        $this->assertFalse($responseA->isCached());
+        $this->assertEquals(['name' => 'Sam'], $responseA->json());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertInstanceOf(MockResponse::class, $responseA->getFakeResponse());
+        $this->assertEquals(['X-Foo' => 'Bar'], $responseA->headers()->all());
 
-    $requestB = new FileDownloadRequest;
-    $responseB = connector()->send($requestB, $mockClient);
+        $responseB = $connector->send(new UserRequest());
 
-    expect($responseB->body())->toEqual(file_get_contents('tests/Fixtures/Files/test.pdf'));
-});
+        $this->assertInstanceOf(Response::class, $responseB);
+        $this->assertTrue($responseB->isMocked());
+        $this->assertTrue($responseB->isFaked());
+        $this->assertFalse($responseB->isCached());
+        $this->assertEquals(['name' => 'Alex'], $responseB->json());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertInstanceOf(MockResponse::class, $responseB->getFakeResponse());
 
-test('you can create a custom fixture class', function () {
-    $mockClient = new MockClient([
-        new UserFixture,
-        new UserFixture,
-    ]);
+        $responseC = $connector->send(new UserRequest());
 
-    $responseA = connector()->send(new UserRequest, $mockClient);
+        $this->assertInstanceOf(Response::class, $responseC);
+        $this->assertTrue($responseC->isMocked());
+        $this->assertTrue($responseC->isFaked());
+        $this->assertFalse($responseC->isCached());
+        $this->assertEquals(['error' => 'Server Unavailable'], $responseC->json());
+        $this->assertEquals(500, $responseC->status());
+        $this->assertInstanceOf(MockResponse::class, $responseC->getFakeResponse());
 
-    expect($responseA->isMocked())->toBeFalse();
-    expect($responseA->status())->toEqual(200);
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
+        $this->expectException(NoMockResponseFoundException::class);
+        $this->expectExceptionMessage('Saloon was unable to guess a mock response for your request [https://tests.saloon.dev/api/user], consider using a wildcard url mock or a connector mock.');
 
-    $responseB = connector()->send(new UserRequest, $mockClient);
+        $connector->send(new UserRequest());
+    }
 
-    expect($responseB->isMocked())->toBeTrue();
-    expect($responseB->status())->toEqual(200);
-    expect($responseB->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+    public function testARequestCanBeMockedWithAConnectorDefined()
+    {
+        $responseA = MockResponse::make(['name' => 'Sammyjo20']);
+        $responseB = MockResponse::make(['name' => 'Alex']);
 
-test('it will throw an exception if the custom fixture class is missing a name', function () {
-    $mockClient = new MockClient([
-        new MissingNameFixture,
-    ]);
+        $connectorA = new TestConnector();
+        $connectorB = new QueryParameterConnector();
 
-    $this->expectException(FixtureException::class);
-    $this->expectExceptionMessage('The fixture must have a name');
+        $connectorARequest = new UserRequest();
+        $connectorBRequest = new QueryParameterConnectorRequest();
 
-    connector()->send(new UserRequest, $mockClient);
-});
+        $mockClient = new MockClient([
+            TestConnector::class => $responseA,
+            QueryParameterConnector::class => $responseB,
+        ]);
 
-test('you can hide sensitive json body parameters and headers before the fixture is stored', function () {
-    $mockClient = new MockClient([
-        new SafeUserFixture,
-        new SafeUserFixture,
-    ]);
+        $responseA = $connectorA->send($connectorARequest, $mockClient);
 
-    $responseA = connector()->send(new UserRequest, $mockClient);
-    $responseB = connector()->send(new UserRequest, $mockClient);
+        $this->assertTrue($responseA->isMocked());
+        $this->assertEquals(['name' => 'Sammyjo20'], $responseA->json());
+        $this->assertEquals(200, $responseA->status());
 
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
+        $responseB = $connectorB->send($connectorBRequest, $mockClient);
 
-    expect($responseA->header('Server'))->toEqual('cloudflare');
-    expect($responseA->header('Cache-Control'))->toEqual('no-cache, private');
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(['name' => 'Alex'], $responseB->json());
+        $this->assertEquals(200, $responseB->status());
+    }
 
-    expect($responseA->isFaked())->toBeFalse();
-    expect($responseB->isFaked())->toBeTrue();
+    public function testARequestCanBeMockedWithARequestDefined()
+    {
+        $responseA = MockResponse::make(['name' => 'Sammyjo20']);
+        $responseB = MockResponse::make(['name' => 'Alex']);
 
-    expect($responseB->json())->toEqual([
-        'name' => 'Sxxx',
-        'actual_name' => 'REDACTED',
-        'twitter' => '@saloonphp',
-    ]);
+        $connectorA = new TestConnector();
+        $connectorB = new QueryParameterConnector();
 
-    expect($responseB->header('Server'))->toEqual('secret');
-    expect($responseB->header('Cache-Control'))->toEqual('no-cache, private, yeehaw');
+        $requestA = new UserRequest();
+        $requestB = new QueryParameterConnectorRequest();
 
-    $fixtureData = json_decode(file_get_contents('tests/Fixtures/Saloon/Testing/user.json'), true, 512, JSON_THROW_ON_ERROR);
+        $mockClient = new MockClient([
+            UserRequest::class => $responseA,
+            QueryParameterConnectorRequest::class => $responseB,
+        ]);
 
-    expect($fixtureData['headers']['Server'])->toEqual('secret');
-    expect($fixtureData['headers']['Cache-Control'])->toEqual('no-cache, private, yeehaw');
-    expect($fixtureData['data'])->toEqual(json_encode([
-        'name' => 'Sxxx',
-        'actual_name' => 'REDACTED',
-        'twitter' => '@saloonphp',
-    ], JSON_THROW_ON_ERROR));
-});
+        $responseA = $connectorA->send($requestA, $mockClient);
 
-test('the fixture swap tool works on multiple attempts and recursively', function () {
-    $mockClient = new MockClient([
-        new SuperheroFixture,
-        new SuperheroFixture,
-    ]);
+        $this->assertTrue($responseA->isMocked());
+        $this->assertEquals(['name' => 'Sammyjo20'], $responseA->json());
+        $this->assertEquals(200, $responseA->status());
 
-    $responseA = connector()->send(new PagedSuperheroRequest, $mockClient);
-    $responseB = connector()->send(new PagedSuperheroRequest, $mockClient);
+        $responseB = $connectorB->send($requestB, $mockClient);
 
-    expect($responseA->json()['data'])->each->toHaveKey('publisher', 'DC Comics');
-    expect($responseB->json()['data'])->each->toHaveKey('publisher', 'REDACTED');
-});
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(['name' => 'Alex'], $responseB->json());
+        $this->assertEquals(200, $responseB->status());
+    }
 
-test('you can define a custom redaction method for non-json body fixtures', function () {
-    $mockClient = new MockClient([
-        new BeforeSaveUserFixture,
-        new BeforeSaveUserFixture,
-    ]);
+    public function testARequestCanBeMockedWithAUrlDefined()
+    {
+        $responseA = MockResponse::make(['name' => 'Sammyjo20']);
+        $responseB = MockResponse::make(['name' => 'Alex']);
+        $responseC = MockResponse::make(['error' => 'Server Broken'], 500);
 
-    $responseA = connector()->send(new UserRequest, $mockClient);
-    $responseB = connector()->send(new UserRequest, $mockClient);
+        $connectorA = new TestConnector();
+        $connectorB = new DifferentServiceConnector();
 
-    expect($responseA->status())->toEqual(200);
-    expect($responseB->status())->toEqual(222);
-});
+        $requestA = new UserRequest();
+        $requestB = new ErrorRequest();
+        $requestC = new DifferentServiceUserRequest();
 
-test('you can define regex patterns that should be used to replace the body in fixtures', function () {
-    $mockClient = new MockClient([
-        new RegexUserFixture,
-        new RegexUserFixture,
-    ]);
+        $mockClient = new MockClient([
+            'tests.saloon.dev/api/user' => $responseA, // Test Exact Route
+            'tests.saloon.dev/*' => $responseB, // Test Wildcard Routes
+            'google.com/*' => $responseC, // Test Different Route,
+        ]);
 
-    $responseA = connector()->send(new UserRequest, $mockClient);
-    $responseB = connector()->send(new UserRequest, $mockClient);
+        $responseA = $connectorA->send($requestA, $mockClient);
 
-    expect($responseA->json())->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
+        $this->assertTrue($responseA->isMocked());
+        $this->assertEquals(['name' => 'Sammyjo20'], $responseA->json());
+        $this->assertEquals(200, $responseA->status());
 
-    expect($responseA->isFaked())->toBeFalse();
-    expect($responseB->isFaked())->toBeTrue();
+        $responseB = $connectorA->send($requestB, $mockClient);
 
-    expect($responseB->json())->toEqual([
-        'name' => 'Sxxxmyjo20',
-        'actual_name' => 'Sxxx',
-        'twitter' => '**REDACTED-TWITTER**',
-    ]);
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(['name' => 'Alex'], $responseB->json());
+        $this->assertEquals(200, $responseB->status());
 
-    $fixtureData = json_decode(file_get_contents('tests/Fixtures/Saloon/Testing/user.json'), true, 512, JSON_THROW_ON_ERROR);
+        $responseC = $connectorB->send($requestC, $mockClient);
 
-    expect($fixtureData['data'])->toEqual(json_encode([
-        'name' => 'Sxxxmyjo20',
-        'actual_name' => 'Sxxx',
-        'twitter' => '**REDACTED-TWITTER**',
-    ], JSON_THROW_ON_ERROR));
-});
+        $this->assertTrue($responseC->isMocked());
+        $this->assertEquals(['error' => 'Server Broken'], $responseC->json());
+        $this->assertEquals(500, $responseC->status());
+    }
 
-test('request and response middleware is invoked when using fake responses', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam'], 200, ['X-Foo' => 'Bar']),
-        MockResponse::make(['name' => 'Alex']),
-        MockResponse::make(['error' => 'Server Unavailable'], 500),
-    ]);
+    public function testYouCanCreateWildcardUrlMocks()
+    {
+        $responseA = MockResponse::make(['name' => 'Sammyjo20']);
+        $responseB = MockResponse::make(['name' => 'Alex']);
+        $responseC = MockResponse::make(['error' => 'Server Broken'], 500);
 
-    $middlewareA = false;
-    $middlewareB = false;
-    $middlewareC = false;
-    $middlewareD = false;
+        $connectorA = new TestConnector();
+        $connectorB = new DifferentServiceConnector();
 
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
+        $requestA = new UserRequest();
+        $requestB = new ErrorRequest();
+        $requestC = new DifferentServiceUserRequest();
 
-    $request = new UserRequest;
+        $mockClient = new MockClient([
+            'tests.saloon.dev/api/user' => $responseA, // Test Exact Route
+            'tests.saloon.dev/*' => $responseB, // Test Wildcard Routes
+            '*' => $responseC,
+        ]);
 
-    $connector->middleware()->onRequest(function () use (&$middlewareA) {
-        $middlewareA = true;
-    });
+        $responseA = $connectorA->send($requestA, $mockClient);
 
-    $connector->middleware()->onResponse(function () use (&$middlewareB) {
-        $middlewareB = true;
-    });
+        $this->assertTrue($responseA->isMocked());
+        $this->assertEquals(['name' => 'Sammyjo20'], $responseA->json());
+        $this->assertEquals(200, $responseA->status());
 
-    $request->middleware()->onRequest(function () use (&$middlewareC) {
-        $middlewareC = true;
-    });
+        $responseB = $connectorA->send($requestB, $mockClient);
 
-    $request->middleware()->onResponse(function () use (&$middlewareD) {
-        $middlewareD = true;
-    });
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(['name' => 'Alex'], $responseB->json());
+        $this->assertEquals(200, $responseB->status());
 
-    $responseA = $connector->send($request);
+        $responseC = $connectorB->send($requestC, $mockClient);
 
-    expect($middlewareA)->toBeTrue();
-    expect($middlewareB)->toBeTrue();
-    expect($middlewareC)->toBeTrue();
-    expect($middlewareD)->toBeTrue();
-});
+        $this->assertTrue($responseC->isMocked());
+        $this->assertEquals(['error' => 'Server Broken'], $responseC->json());
+        $this->assertEquals(500, $responseC->status());
+    }
 
-test('fixtures are still recorded on the first request', function () {
-    $mockClient = new MockClient([
-        MockResponse::fixture('user'), // Test Exact Route
-    ]);
+    public function testYouCanUseAClosureForTheMockResponse()
+    {
+        $sequenceMock = new MockClient([
+            function (PendingRequest $pendingRequest) {
+                return new MockResponse(['request' => $pendingRequest->getUrl()]);
+            },
+        ]);
 
-    connector()->send(new UserRequest, $mockClient);
+        $sequenceResponse = connector()->send(new UserRequest(), $sequenceMock);
 
-    $mockClient->assertSent(UserRequest::class);
-});
+        $this->assertTrue($sequenceResponse->isMocked());
+        $this->assertEquals(['request' => 'https://tests.saloon.dev/api/user'], $sequenceResponse->json());
+
+        // Connector mock
+
+        $connectorMock = new MockClient([
+            TestConnector::class => function (PendingRequest $pendingRequest) {
+                return new MockResponse(['request' => $pendingRequest->getUrl()]);
+            },
+        ]);
+
+        $connectorResponse = connector()->send(new UserRequest(), $connectorMock);
+
+        $this->assertTrue($connectorResponse->isMocked());
+        $this->assertEquals(['request' => 'https://tests.saloon.dev/api/user'], $connectorResponse->json());
+
+        // Request mock
+
+        $requestMock = new MockClient([
+            UserRequest::class => function (PendingRequest $pendingRequest) {
+                return new MockResponse(['request' => $pendingRequest->getUrl()]);
+            },
+        ]);
+
+        $requestResponse = connector()->send(new UserRequest(), $requestMock);
+
+        $this->assertTrue($requestResponse->isMocked());
+        $this->assertEquals(['request' => 'https://tests.saloon.dev/api/user'], $requestResponse->json());
+
+        // URL mock
+
+        $urlMock = new MockClient([
+            'tests.saloon.dev/*' => function (PendingRequest $pendingRequest) {
+                return new MockResponse(['request' => $pendingRequest->getUrl()]);
+            },
+        ]);
+
+        $urlResponse = connector()->send(new UserRequest(), $urlMock);
+
+        $this->assertTrue($urlResponse->isMocked());
+        $this->assertEquals(['request' => 'https://tests.saloon.dev/api/user'], $urlResponse->json());
+    }
+
+    public function testYouCanUseACallableClassAsTheMockResponse()
+    {
+        $mockClient = new MockClient([
+            UserRequest::class => new CallableMockResponse(),
+        ]);
+
+        $sequenceResponse = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($sequenceResponse->isMocked());
+        $this->assertEquals(['request_class' => UserRequest::class], $sequenceResponse->json());
+    }
+
+    public function testAFixtureCanBeUsedWithAMockSequence()
+    {
+        $mockClient = new MockClient([
+            MockResponse::fixture('user'),
+            MockResponse::fixture('user'),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+    }
+
+    public function testAFixtureCanBeUsedWithAConnectorMock()
+    {
+        $mockClient = new MockClient([
+            TestConnector::class => MockResponse::fixture('connector'),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+
+        // Even though it's a different request, it should use the same fixture
+
+        $responseC = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertTrue($responseC->isMocked());
+        $this->assertEquals(200, $responseC->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseC->json());
+    }
+
+    public function testAFixtureCanBeUsedWithARequestMock()
+    {
+        $mockClient = new MockClient([
+            UserRequest::class => MockResponse::fixture('user'),
+        ]);
+
+        $this->assertFalse($this->filesystem->has('user.json'));
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $this->assertTrue($this->filesystem->has('user.json'));
+
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+    }
+
+    public function testAFixtureCanBeUsedWithAUrlMock()
+    {
+        $mockClient = new MockClient([
+            'tests.saloon.dev/api/user' => MockResponse::fixture('user'), // Test Exact Route
+            'tests.saloon.dev/*' => MockResponse::fixture('other'), // Test Wildcard Routes
+        ]);
+
+        $this->assertFalse($this->filesystem->has('user.json'));
+        $this->assertFalse($this->filesystem->has('other.json'));
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($this->filesystem->has('user.json'));
+        $this->assertFalse($this->filesystem->has('other.json'));
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertTrue($this->filesystem->has('user.json'));
+        $this->assertTrue($this->filesystem->has('other.json'));
+
+        $this->assertFalse($responseB->isMocked());
+        $this->assertEquals(500, $responseB->status());
+        $this->assertEquals([
+            'message' => 'Fake Error',
+        ], $responseB->json());
+
+        // This should use the first mock
+
+        $responseC = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseC->isMocked());
+        $this->assertEquals(200, $responseC->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseC->json());
+
+        // Another error request should use the "other" mock
+
+        $responseD = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertTrue($responseD->isMocked());
+        $this->assertEquals(500, $responseD->status());
+        $this->assertEquals([
+            'message' => 'Fake Error',
+        ], $responseD->json());
+    }
+
+    public function testAFixtureCanBeUsedWithAWildcardUrlMock()
+    {
+        $mockClient = new MockClient([
+            '*' => MockResponse::fixture('user'), // Test Exact Route
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+    }
+
+    public function testAFixtureCanBeUsedWithinAClosureMock()
+    {
+        $mockClient = new MockClient([
+            '*' => function (PendingRequest $pendingRequest) {
+                if ($pendingRequest->getRequest() instanceof UserRequest) {
+                    return MockResponse::fixture('user');
+                }
+
+                return MockResponse::fixture('other');
+            },
+        ]);
+
+        $this->assertFalse($this->filesystem->has('user.json'));
+        $this->assertFalse($this->filesystem->has('other.json'));
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+
+        // Now we'll test a different route
+
+        $responseC = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertFalse($responseC->isMocked());
+        $this->assertEquals(500, $responseC->status());
+        $this->assertEquals([
+            'message' => 'Fake Error',
+        ], $responseC->json());
+
+        // Another error request should use the "other" mock
+
+        $responseD = connector()->send(new ErrorRequest(), $mockClient);
+
+        $this->assertTrue($responseD->isMocked());
+        $this->assertEquals(500, $responseD->status());
+        $this->assertEquals([
+            'message' => 'Fake Error',
+        ], $responseD->json());
+    }
+
+    public function testWhenUsingTheAlwaysThrowRequestTraitTheResponseRecorderWillStillRecordTheResponse()
+    {
+        $mockClient = new MockClient([
+            AlwaysThrowRequest::class => MockResponse::fixture('error'),
+        ]);
+
+        $exception = null;
+
+        try {
+            connector()->send(new AlwaysThrowRequest(), $mockClient);
+        } catch (Exception $exception) {
+            //
+        }
+
+        $this->assertInstanceOf(RequestException::class, $exception);
+
+        $fixture = MockResponse::fixture('error')->getMockResponse();
+
+        $this->assertInstanceOf(MockResponse::class, $fixture);
+    }
+
+    public function testAFixtureCanRecordTheFileDataFromARequestThatReturnsAFileDownload()
+    {
+        $mockClient = new MockClient([
+            FileDownloadRequest::class => MockResponse::fixture('file'),
+        ]);
+
+        $requestA = new FileDownloadRequest();
+        $responseA = connector()->send($requestA, $mockClient);
+
+        $this->assertEquals(file_get_contents('tests/Fixtures/Files/test.pdf'), $responseA->body());
+
+        $requestB = new FileDownloadRequest();
+        $responseB = connector()->send($requestB, $mockClient);
+
+        $this->assertEquals(file_get_contents('tests/Fixtures/Files/test.pdf'), $responseB->body());
+    }
+
+    public function testYouCanCreateACustomFixtureClass()
+    {
+        $mockClient = new MockClient([
+            new UserFixture(),
+            new UserFixture(),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertFalse($responseA->isMocked());
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertTrue($responseB->isMocked());
+        $this->assertEquals(200, $responseB->status());
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseB->json());
+    }
+
+    public function testItWillThrowAnExceptionIfTheCustomFixtureClassIsMissingAName()
+    {
+        $mockClient = new MockClient([
+            new MissingNameFixture(),
+        ]);
+
+        $this->expectException(FixtureException::class);
+        $this->expectExceptionMessage('The fixture must have a name');
+
+        connector()->send(new UserRequest(), $mockClient);
+    }
+
+    public function testYouCanHideSensitiveJsonBodyParametersAndHeadersBeforeTheFixtureIsStored()
+    {
+        $mockClient = new MockClient([
+            new SafeUserFixture(),
+            new SafeUserFixture(),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $this->assertEquals('cloudflare', $responseA->header('Server'));
+        $this->assertEquals('no-cache, private', $responseA->header('Cache-Control'));
+
+        $this->assertFalse($responseA->isFaked());
+        $this->assertTrue($responseB->isFaked());
+
+        $this->assertEquals([
+            'name' => 'Sxxx',
+            'actual_name' => 'REDACTED',
+            'twitter' => '@saloonphp',
+        ], $responseB->json());
+
+        $this->assertEquals('secret', $responseB->header('Server'));
+        $this->assertEquals('no-cache, private, yeehaw', $responseB->header('Cache-Control'));
+
+        $fixtureData = json_decode(file_get_contents('tests/Fixtures/Saloon/Testing/user.json'), true);
+
+        $this->assertEquals('secret', $fixtureData['headers']['Server']);
+        $this->assertEquals('no-cache, private, yeehaw', $fixtureData['headers']['Cache-Control']);
+        $this->assertEquals(json_encode([
+            'name' => 'Sxxx',
+            'actual_name' => 'REDACTED',
+            'twitter' => '@saloonphp',
+        ]), $fixtureData['data']);
+    }
+
+    public function testTheFixtureSwapToolWorksOnMultipleAttemptsAndRecursively()
+    {
+        $mockClient = new MockClient([
+            new SuperheroFixture(),
+            new SuperheroFixture(),
+        ]);
+
+        $responseA = connector()->send(new PagedSuperheroRequest(), $mockClient);
+        $responseB = connector()->send(new PagedSuperheroRequest(), $mockClient);
+
+        foreach ($responseA->json()['data'] as $item) {
+            $this->assertArrayHasKey('publisher', $item);
+            $this->assertEquals('DC Comics', $item['publisher']);
+        }
+
+        foreach ($responseB->json()['data'] as $item) {
+            $this->assertArrayHasKey('publisher', $item);
+            $this->assertEquals('REDACTED', $item['publisher']);
+        }
+    }
+
+    public function testYouCanDefineACustomRedactionMethodForNonJsonBodyFixtures()
+    {
+        $mockClient = new MockClient([
+            new BeforeSaveUserFixture(),
+            new BeforeSaveUserFixture(),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertEquals(200, $responseA->status());
+        $this->assertEquals(222, $responseB->status());
+    }
+
+    public function testYouCanDefineRegexPatternsThatShouldBeUsedToReplaceTheBodyInFixtures()
+    {
+        $mockClient = new MockClient([
+            new RegexUserFixture(),
+            new RegexUserFixture(),
+        ]);
+
+        $responseA = connector()->send(new UserRequest(), $mockClient);
+        $responseB = connector()->send(new UserRequest(), $mockClient);
+
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $responseA->json());
+
+        $this->assertFalse($responseA->isFaked());
+        $this->assertTrue($responseB->isFaked());
+
+        $this->assertEquals([
+            'name' => 'Sxxxmyjo20',
+            'actual_name' => 'Sxxx',
+            'twitter' => '**REDACTED-TWITTER**',
+        ], $responseB->json());
+
+        $fixtureData = json_decode(file_get_contents('tests/Fixtures/Saloon/Testing/user.json'), true);
+
+        $this->assertEquals(json_encode([
+            'name' => 'Sxxxmyjo20',
+            'actual_name' => 'Sxxx',
+            'twitter' => '**REDACTED-TWITTER**',
+        ]), $fixtureData['data']);
+    }
+
+    public function testRequestAndResponseMiddlewareIsInvokedWhenUsingFakeResponses()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam'], 200, ['X-Foo' => 'Bar']),
+            MockResponse::make(['name' => 'Alex']),
+            MockResponse::make(['error' => 'Server Unavailable'], 500),
+        ]);
+
+        $middlewareA = false;
+        $middlewareB = false;
+        $middlewareC = false;
+        $middlewareD = false;
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+
+        $request = new UserRequest();
+
+        $connector->middleware()->onRequest(function () use (&$middlewareA) {
+            $middlewareA = true;
+        });
+
+        $connector->middleware()->onResponse(function () use (&$middlewareB) {
+            $middlewareB = true;
+        });
+
+        $request->middleware()->onRequest(function () use (&$middlewareC) {
+            $middlewareC = true;
+        });
+
+        $request->middleware()->onResponse(function () use (&$middlewareD) {
+            $middlewareD = true;
+        });
+
+        $responseA = $connector->send($request);
+
+        $this->assertTrue($middlewareA);
+        $this->assertTrue($middlewareB);
+        $this->assertTrue($middlewareC);
+        $this->assertTrue($middlewareD);
+    }
+
+    public function testFixturesAreStillRecordedOnTheFirstRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::fixture('user'), // Test Exact Route
+        ]);
+
+        connector()->send(new UserRequest(), $mockClient);
+
+        $mockClient->assertSent(UserRequest::class);
+    }
+}

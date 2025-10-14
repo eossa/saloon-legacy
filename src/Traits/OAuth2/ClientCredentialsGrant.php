@@ -1,11 +1,14 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\OAuth2;
 
 use DateInterval;
 use DateTimeImmutable;
+use Exception;
+use Saloon\Exceptions\OAuthConfigValidationException;
+use Saloon\Exceptions\PendingRequestException;
+use Saloon\Exceptions\Request\FatalRequestException;
+use Saloon\Exceptions\Request\RequestException;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Helpers\OAuth2\OAuthConfig;
@@ -17,17 +20,28 @@ trait ClientCredentialsGrant
 {
     use HasOAuthConfig;
 
-    /**
+    /**´
      * Get the access token
      *
-     * @template TRequest of \Saloon\Http\Request
+     * @template TRequest of Request
      *
      * @param array<string> $scopes
+     * @param string $scopeSeparator
+     * @param bool $returnResponse
      * @param callable(TRequest): (void)|null $requestModifier
+     *
+     * @return OAuthAuthenticator|Response
+     *
+     * @return OAuthAuthenticator|Response
+     * @throws OAuthConfigValidationException
+     * @throws FatalRequestException
+     * @throws RequestException
+     * @throws PendingRequestException
+     * @throws Exception
      */
-    public function getAccessToken(array $scopes = [], string $scopeSeparator = ' ', bool $returnResponse = false, ?callable $requestModifier = null): OAuthAuthenticator|Response
+    public function getAccessToken(array $scopes = [], $scopeSeparator = ' ', $returnResponse = false, callable $requestModifier = null)
     {
-        $this->oauthConfig()->validate(withRedirectUrl: false);
+        $this->oauthConfig()->validate(false);
 
         $request = $this->resolveAccessTokenRequest($this->oauthConfig(), $scopes, $scopeSeparator);
 
@@ -43,15 +57,19 @@ trait ClientCredentialsGrant
             return $response;
         }
 
-        $response->throw();
+        $response->throwException();
 
         return $this->createOAuthAuthenticatorFromResponse($response);
     }
 
     /**
      * Create the OAuthAuthenticator from a response.
+     *
+     * @return OAuthAuthenticator
+     *
+     * @throws Exception
      */
-    protected function createOAuthAuthenticatorFromResponse(Response $response): OAuthAuthenticator
+    protected function createOAuthAuthenticatorFromResponse(Response $response)
     {
         $responseData = $response->object();
 
@@ -69,16 +87,27 @@ trait ClientCredentialsGrant
 
     /**
      * Create the authenticator.
+     *
+     * @param string $accessToken
+     * @param DateTimeImmutable|null $expiresAt
+     *
+     * @return OAuthAuthenticator
      */
-    protected function createOAuthAuthenticator(string $accessToken, ?DateTimeImmutable $expiresAt = null): OAuthAuthenticator
+    protected function createOAuthAuthenticator($accessToken, DateTimeImmutable $expiresAt = null)
     {
         return new AccessTokenAuthenticator($accessToken, null, $expiresAt);
     }
 
     /**
      * Resolve the access token request
+     *
+     * @param OAuthConfig $oauthConfig
+     * @param array $scopes
+     * @param string $scopeSeparator
+     *
+     * @return Request
      */
-    protected function resolveAccessTokenRequest(OAuthConfig $oauthConfig, array $scopes = [], string $scopeSeparator = ' '): Request
+    protected function resolveAccessTokenRequest(OAuthConfig $oauthConfig, array $scopes = [], $scopeSeparator = ' ')
     {
         return new GetClientCredentialsTokenRequest($oauthConfig, $scopes, $scopeSeparator);
     }

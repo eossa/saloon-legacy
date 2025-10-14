@@ -1,12 +1,17 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Plugins;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Tests\Fixtures\Requests\AlwaysThrowRequest;
 
-test('it always throws an error if the plugin has been added', function () {
-    $this->expectException(RequestException::class);
+class AlwaysThrowOnErrorsPluginTest extends TestCase
+{
+    public function testItAlwaysThrowsAnErrorIfThePluginHasBeenAdded()
+    {
+        $this->expectException(RequestException::class);
 
-    connector()->send(new AlwaysThrowRequest);
-});
+        connector()->send(new AlwaysThrowRequest);
+    }
+}

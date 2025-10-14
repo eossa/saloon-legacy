@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\PendingRequest;
 
 use Saloon\Helpers\URLHelper;
@@ -14,13 +12,17 @@ trait ManagesPsrRequests
 {
     /**
      * The factory collection.
+     *
+     * @var FactoryCollection
      */
-    protected FactoryCollection $factoryCollection;
+    protected $factoryCollection;
 
     /**
      * Get the URI for the pending request.
+     *
+     * @return UriInterface
      */
-    public function getUri(): UriInterface
+    public function getUri()
     {
         $uri = $this->factoryCollection->uriFactory->createUri($this->getUrl());
 
@@ -37,14 +39,16 @@ trait ManagesPsrRequests
 
     /**
      * Get the PSR-7 request
+     *
+     * @return RequestInterface
      */
-    public function createPsrRequest(): RequestInterface
+    public function createPsrRequest()
     {
         $factories = $this->factoryCollection;
 
         $request = $factories->requestFactory->createRequest(
-            method: $this->getMethod()->value,
-            uri: $this->getUri(),
+            $this->getMethod(),
+            $this->getUri()
         );
 
         foreach ($this->headers()->all() as $headerName => $headerValue) {
@@ -66,8 +70,10 @@ trait ManagesPsrRequests
 
     /**
      * Get the factory collection
+     *
+     * @return FactoryCollection
      */
-    public function getFactoryCollection(): FactoryCollection
+    public function getFactoryCollection()
     {
         return $this->factoryCollection;
     }

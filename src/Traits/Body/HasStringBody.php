@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Saloon\Repositories\Body\StringBodyRepository;
@@ -12,21 +10,30 @@ trait HasStringBody
 
     /**
      * Body Repository
+     *
+     * @var StringBodyRepository
      */
-    protected StringBodyRepository $body;
+    protected $body;
 
     /**
      * Retrieve the data repository
+     *
+     * @return StringBodyRepository
      */
-    public function body(): StringBodyRepository
+    public function body()
     {
-        return $this->body ??= new StringBodyRepository($this->defaultBody());
+        if (isset($this->body)) {
+            return $this->body;
+        }
+        return $this->body = new StringBodyRepository($this->defaultBody());
     }
 
     /**
      * Default body
+     *
+     * @return string|null
      */
-    protected function defaultBody(): ?string
+    protected function defaultBody()
     {
         return null;
     }

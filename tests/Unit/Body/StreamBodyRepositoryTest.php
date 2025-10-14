@@ -1,108 +1,157 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
 use GuzzleHttp\Psr7\Utils;
+use PHPUnit\Framework\TestCase;
+use InvalidArgumentException;
 use Saloon\Repositories\Body\StreamBodyRepository;
 
-test('the store is empty by default', function () {
-    $body = new StreamBodyRepository();
+class StreamBodyRepositoryTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $body = new StreamBodyRepository();
 
-    expect($body->all())->toBeNull();
-    expect($body->get())->toBeNull();
-});
+        $this->assertNull($body->all());
+        $this->assertNull($body->get());
+    }
 
+    public function testTheStoreCanHaveADefaultStreamProvided()
+    {
+        $resource = tmpfile();
 
-test('the store can have a default stream provided', function () {
-    $resource = tmpfile();
+        $body = new StreamBodyRepository($resource);
 
-    $body = new StreamBodyRepository($resource);
+        $this->assertEquals($resource, $body->all());
+        $this->assertEquals($resource, $body->get());
+    }
 
-    expect($body->all())->toEqual($resource);
-    expect($body->get())->toEqual($resource);
-});
+    public function testYouCanSetIt()
+    {
+        $resourceA = fopen('php://memory', 'rw+');
+        fwrite($resourceA, 'Howdy');
 
-test('you can set it', function () {
-    $resourceA = fopen('php://memory', 'rw+');
-    fwrite($resourceA, 'Howdy');
+        $resourceB = fopen('php://memory', 'rw+');
+        fwrite($resourceB, 'Yeehaw');
 
-    $resourceB = fopen('php://memory', 'rw+');
-    fwrite($resourceB, 'Yeehaw');
+        $body = new StreamBodyRepository($resourceA);
 
-    $body = new StreamBodyRepository($resourceA);
+        $body->set($resourceB);
 
-    $body->set($resourceB);
+        $this->assertEquals($resourceB, $body->get());
+    }
 
-    expect($body->get())->toEqual($resourceB);
-});
+    public function testYouCanSetAnInstanceOfStreamInterface()
+    {
+        $streamA = Utils::streamFor('Howdy!');
+        $streamB = Utils::streamFor('Partner!');
 
-test('you can set an instance of StreamInterface', function () {
-    $streamA = Utils::streamFor('Howdy!');
-    $streamB = Utils::streamFor('Partner!');
+        $body = new StreamBodyRepository($streamA);
+        $body->set($streamB);
 
-    $body = new StreamBodyRepository($streamA);
-    $body->set($streamB);
+        $this->assertSame($streamB, $body->get());
+    }
 
-    expect($body->get())->toBe($streamB);
-});
+    public function testYouCanConditionallySetOnTheStore()
+    {
+        $body = new StreamBodyRepository();
 
-test('you can conditionally set on the store', function () {
-    $body = new StreamBodyRepository();
+        $resourceA = fopen('php://memory', 'rw+');
+        fwrite($resourceA, 'Howdy');
 
-    $resourceA = fopen('php://memory', 'rw+');
-    fwrite($resourceA, 'Howdy');
+        $resourceB = fopen('php://memory', 'rw+');
+        fwrite($resourceB, 'Yeehaw');
 
-    $resourceB = fopen('php://memory', 'rw+');
-    fwrite($resourceB, 'Yeehaw');
+        $body->when(true, function (StreamBodyRepository $body) use ($resourceA) {
+            $body->set($resourceA);
+        });
+        $body->when(false, function (StreamBodyRepository $body) use ($resourceB) {
+            $body->set($resourceB);
+        });
 
-    $body->when(true, fn (StreamBodyRepository $body) => $body->set($resourceA));
-    $body->when(false, fn (StreamBodyRepository $body) => $body->set($resourceB));
+        $this->assertEquals($resourceA, $body->get());
+    }
 
-    expect($body->get())->toEqual($resourceA);
-});
+    public function testYouCanCheckIfTheStoreIsEmptyOrNot()
+    {
+        $body = new StreamBodyRepository();
 
-test('you can check if the store is empty or not', function () {
-    $body = new StreamBodyRepository();
+        $this->assertTrue($body->isEmpty());
+        $this->assertFalse($body->isNotEmpty());
 
-    expect($body->isEmpty())->toBeTrue();
-    expect($body->isNotEmpty())->toBeFalse();
+        $body->set(tmpfile());
 
-    $body->set(tmpfile());
+        $this->assertFalse($body->isEmpty());
+        $this->assertTrue($body->isNotEmpty());
+    }
 
-    expect($body->isEmpty())->toBeFalse();
-    expect($body->isNotEmpty())->toBeTrue();
-});
+    public function testItWillThrowAnExceptionIfTheValueIsNotAResourceOrStreamInterfaceWhenInstantiating()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new StreamBodyRepository('Howdy');
+    }
 
-test('it will throw an exception if the value is not a resource or StreamInterface when instantiating', function (mixed $value) {
-    $this->expectException(InvalidArgumentException::class);
+    public function testItWillThrowAnExceptionForInteger()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new StreamBodyRepository(123);
+    }
 
-    new StreamBodyRepository($value);
-})->with([
-    fn () => 'Howdy',
-    fn () => 123,
-    fn () => [],
-    fn () => false,
-]);
+    public function testItWillThrowAnExceptionForArray()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new StreamBodyRepository([]);
+    }
 
-test('it will throw an exception if the value is not a resource or StreamInterface when setting', function (mixed $value) {
-    $this->expectException(InvalidArgumentException::class);
+    public function testItWillThrowAnExceptionForBoolean()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        new StreamBodyRepository(false);
+    }
 
-    new StreamBodyRepository($value);
-})->with([
-    fn () => 'Howdy',
-    fn () => 123,
-    fn () => [],
-    fn () => false,
-]);
+    public function testItWillThrowAnExceptionIfTheValueIsNotAResourceOrStreamInterfaceWhenSetting()
+    {
+        $body = new StreamBodyRepository();
 
-test('it allows null values', function () {
-    $body = new StreamBodyRepository(null);
+        $this->expectException(InvalidArgumentException::class);
+        $body->set('Howdy');
+    }
 
-    expect($body->get())->toBeNull();
-    expect($body->isEmpty())->toBeTrue();
+    public function testItWillThrowAnExceptionWhenSettingInteger()
+    {
+        $body = new StreamBodyRepository();
 
-    $body->set(null);
+        $this->expectException(InvalidArgumentException::class);
+        $body->set(123);
+    }
 
-    expect($body->get())->toBeNull();
-    expect($body->isEmpty())->toBeTrue();
-});
+    public function testItWillThrowAnExceptionWhenSettingArray()
+    {
+        $body = new StreamBodyRepository();
+
+        $this->expectException(InvalidArgumentException::class);
+        $body->set([]);
+    }
+
+    public function testItWillThrowAnExceptionWhenSettingBoolean()
+    {
+        $body = new StreamBodyRepository();
+
+        $this->expectException(InvalidArgumentException::class);
+        $body->set(false);
+    }
+
+    public function testItAllowsNullValues()
+    {
+        $body = new StreamBodyRepository(null);
+
+        $this->assertNull($body->get());
+        $this->assertTrue($body->isEmpty());
+
+        $body->set(null);
+
+        $this->assertNull($body->get());
+        $this->assertTrue($body->isEmpty());
+    }
+}

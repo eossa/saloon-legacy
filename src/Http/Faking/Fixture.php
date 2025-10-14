@@ -1,9 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Faking;
 
+use Closure;
+use Exception;
+use Saloon\Exceptions\DirectoryNotFoundException;
+use Saloon\Exceptions\UnableToCreateDirectoryException;
 use Saloon\MockConfig;
 use Saloon\Helpers\Storage;
 use Saloon\Helpers\ArrayHelpers;
@@ -17,42 +19,62 @@ class Fixture
 {
     /**
      * The extension used by the fixture
+     *
+     * @var string
      */
-    protected static string $fixtureExtension = 'json';
+    protected static $fixtureExtension = 'json';
 
     /**
      * The name of the fixture
+     *
+     * @var string
      */
-    protected string $name = '';
+    protected $name = '';
 
     /**
      * The storage helper
+     *
+     * @var Storage
      */
-    protected Storage $storage;
+    protected $storage;
 
     /**
      * Data to merge in the mocked response.
+     *
+     * @var array<string, mixed>|null
      */
-    protected ?array $merge = null;
+    protected $merge = null;
 
     /**
      * Closure to modify the returned data with.
+     *
+     * @var Closure|null
      */
-    protected ?\Closure $through = null;
+    protected $through = null;
 
     /**
      * Constructor
+     *
+     * @param string $name
+     * @param Storage|null $storage
+     *
+     * @throws DirectoryNotFoundException
+     * @throws UnableToCreateDirectoryException
      */
-    public function __construct(string $name = '', ?Storage $storage = null)
+    public function __construct($name = '', $storage = null)
     {
         $this->name = $name;
-        $this->storage = $storage ?? new Storage(MockConfig::getFixturePath(), true);
+        $this->storage = $storage ?: new Storage(MockConfig::getFixturePath(), true);
     }
 
     /**
      * Specify data to merge with the mock response data.
+     *
+     * @param array<string, mixed> $merge
+     *
+     * @return $this
      */
-    public function merge(array $merge = []): static
+    public function merge(array $merge = [])
     {
         $this->merge = $merge;
 
@@ -61,8 +83,10 @@ class Fixture
 
     /**
      * Specify a closure to modify the mock response data with.
+     *
+     * @return $this
      */
-    public function through(\Closure $through): static
+    public function through(Closure $through)
     {
         $this->through = $through;
 
@@ -71,8 +95,12 @@ class Fixture
 
     /**
      * Attempt to get the mock response from the fixture.
+     *
+     * @return MockResponse|null
+     *
+     * @throws Exception
      */
-    public function getMockResponse(): ?MockResponse
+    public function getMockResponse()
     {
         $storage = $this->storage;
         $fixturePath = $this->getFixturePath();
@@ -87,7 +115,10 @@ class Fixture
             // First, we get the body as an array. If we're dealing with
             // a `StringBodyRepository`, we have to encode it first.
             if (! is_array($body = $response->body()->all())) {
-                $body = json_decode($body ?: '[]', associative: true, flags: \JSON_THROW_ON_ERROR);
+                $body = json_decode($body ?: '[]', true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new Exception(json_last_error_msg());
+                }
             }
 
             // We can then merge the data in the body usingthrough
@@ -97,7 +128,7 @@ class Fixture
                     ArrayHelpers::set($body, $key, $value);
                 }
             }
-            
+
             // If specified, we pass the body through a function that
             // may modify the mock response data.
             if (! is_null($this->through)) {
@@ -126,8 +157,10 @@ class Fixture
      * Store data as the fixture.
      *
      * @return $this
+     * @throws FixtureException
+     * @throws Exception
      */
-    public function store(RecordedResponse $recordedResponse): static
+    public function store(RecordedResponse $recordedResponse)
     {
         $recordedResponse = $this->swapSensitiveHeaders($recordedResponse);
         $recordedResponse = $this->swapSensitiveJson($recordedResponse);
@@ -142,9 +175,11 @@ class Fixture
     /**
      * Get the fixture path
      *
-     * @throws \Saloon\Exceptions\FixtureException
+     * @return string
+     *
+     * @throws FixtureException
      */
-    public function getFixturePath(): string
+    public function getFixturePath()
     {
         $name = $this->name;
 
@@ -161,16 +196,20 @@ class Fixture
 
     /**
      * Define the fixture name
+     *
+     * @return string
      */
-    protected function defineName(): string
+    protected function defineName()
     {
         return '';
     }
 
     /**
      * Swap any sensitive headers
+     *
+     * @return RecordedResponse
      */
-    protected function swapSensitiveHeaders(RecordedResponse $recordedResponse): RecordedResponse
+    protected function swapSensitiveHeaders(RecordedResponse $recordedResponse)
     {
         $sensitiveHeaders = $this->defineSensitiveHeaders();
 
@@ -186,9 +225,11 @@ class Fixture
     /**
      * Swap any sensitive JSON data
      *
-     * @throws \JsonException
+     * @return RecordedResponse
+     *
+     * @throws Exception
      */
-    protected function swapSensitiveJson(RecordedResponse $recordedResponse): RecordedResponse
+    protected function swapSensitiveJson(RecordedResponse $recordedResponse)
     {
         $body = json_decode($recordedResponse->data, true);
 
@@ -204,15 +245,20 @@ class Fixture
 
         $redactedData = FixtureHelper::recursivelyReplaceAttributes($body, $sensitiveJsonParameters);
 
-        $recordedResponse->data = json_encode($redactedData, JSON_THROW_ON_ERROR);
+        $recordedResponse->data = json_encode($redactedData);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception(json_last_error_msg());
+        }
 
         return $recordedResponse;
     }
 
     /**
      * Swap sensitive body with regex patterns
+     *
+     * @return RecordedResponse
      */
-    protected function swapSensitiveBodyWithRegex(RecordedResponse $recordedResponse): RecordedResponse
+    protected function swapSensitiveBodyWithRegex(RecordedResponse $recordedResponse)
     {
         $sensitiveRegexPatterns = $this->defineSensitiveRegexPatterns();
 
@@ -232,7 +278,7 @@ class Fixture
      *
      * @return array<string, string|callable>
      */
-    protected function defineSensitiveHeaders(): array
+    protected function defineSensitiveHeaders()
     {
         return [];
     }
@@ -242,7 +288,7 @@ class Fixture
      *
      * @return array<string, string|callable>
      */
-    protected function defineSensitiveJsonParameters(): array
+    protected function defineSensitiveJsonParameters()
     {
         return [];
     }
@@ -252,15 +298,17 @@ class Fixture
      *
      * @return array<string, string>
      */
-    protected function defineSensitiveRegexPatterns(): array
+    protected function defineSensitiveRegexPatterns()
     {
         return [];
     }
 
     /**
      * Hook to use before saving
+     *
+     * @return RecordedResponse
      */
-    protected function beforeSave(RecordedResponse $recordedResponse): RecordedResponse
+    protected function beforeSave(RecordedResponse $recordedResponse)
     {
         return $recordedResponse;
     }

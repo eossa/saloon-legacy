@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\RequestProperties;
 
 use Saloon\Repositories\IntegerStore;
@@ -10,21 +8,30 @@ trait HasDelay
 {
     /**
      * Request Delay
+     *
+     * @var IntegerStore
      */
-    protected IntegerStore $delay;
+    protected $delay;
 
     /**
      * Delay repository
+     *
+     * @return IntegerStore
      */
-    public function delay(): IntegerStore
+    public function delay()
     {
-        return $this->delay ??= new IntegerStore($this->defaultDelay());
+        if (isset($this->delay)) {
+            return $this->delay;
+        }
+        return $this->delay = new IntegerStore($this->defaultDelay());
     }
 
     /**
      * Default Delay
+     *
+     * @return int|null
      */
-    protected function defaultDelay(): ?int
+    protected function defaultDelay()
     {
         return null;
     }

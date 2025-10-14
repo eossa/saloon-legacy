@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\PendingRequest;
 
 use Saloon\Http\PendingRequest;
@@ -11,8 +9,10 @@ class AuthenticatePendingRequest
 {
     /**
      * Authenticate the pending request
+     *
+     * @return PendingRequest
      */
-    public function __invoke(PendingRequest $pendingRequest): PendingRequest
+    public function __invoke(PendingRequest $pendingRequest)
     {
         $authenticator = $pendingRequest->getAuthenticator();
 

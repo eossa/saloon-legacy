@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,30 +13,44 @@ class QueryParameterRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
+
+    /**
+     * @var string
+     */
+    public $endpoint;
 
     /**
      * Constructor
+     *
+     * @param string $endpoint
      */
-    public function __construct(readonly public string $endpoint = '/user')
+    public function __construct($endpoint = '/user')
     {
-        //
+        $this->endpoint = $endpoint;
     }
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->endpoint;
     }
 
-    protected function defaultQuery(): array
+    /**
+     * @return int[]
+     */
+    protected function defaultQuery()
     {
         return [
             'per_page' => 100,

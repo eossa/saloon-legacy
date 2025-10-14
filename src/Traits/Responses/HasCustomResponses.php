@@ -1,8 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Responses;
+
+use Saloon\Http\Response;
 
 trait HasCustomResponses
 {
@@ -11,17 +11,17 @@ trait HasCustomResponses
      *
      * When null or an empty string, the response on the sender will be used.
      *
-     * @var class-string<\Saloon\Http\Response>|null
+     * @var class-string<Response>|null
      */
-    protected ?string $response = null;
+    protected $response = null;
 
     /**
      * Resolve the custom response class
      *
-     * @return class-string<\Saloon\Http\Response>|null
+     * @return class-string<Response>|null
      */
-    public function resolveResponseClass(): ?string
+    public function resolveResponseClass()
     {
-        return $this->response ?? null;
+        return isset($this->response) ? $this->response : null;
     }
 }

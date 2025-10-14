@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Middleware;
 
 use Saloon\Http\PendingRequest;
@@ -13,9 +11,11 @@ class ValidateProperties implements RequestMiddleware
     /**
      * Validate the properties on the request before it is sent
      *
-     * @throws \Saloon\Exceptions\InvalidHeaderException
+     * @return void
+     *
+     * @throws InvalidHeaderException
      */
-    public function __invoke(PendingRequest $pendingRequest): void
+    public function __invoke(PendingRequest $pendingRequest)
     {
         // Validate that each header provided has a string key
 

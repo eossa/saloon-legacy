@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 /**
@@ -14,9 +12,11 @@ class FixtureHelper
      *
      * @param array<string, mixed> $source
      * @param array<string, mixed> $rules
+     * @param bool $caseSensitiveKeys
+     *
      * @return array<string, mixed>
      */
-    public static function recursivelyReplaceAttributes(array $source, array $rules, bool $caseSensitiveKeys = true): array
+    public static function recursivelyReplaceAttributes(array $source, array $rules, $caseSensitiveKeys = true)
     {
         if ($caseSensitiveKeys === false) {
             $rules = array_change_key_case($rules, CASE_LOWER);
@@ -42,16 +42,19 @@ class FixtureHelper
     /**
      * Replace sensitive regex patterns
      *
+     * @param string $source
      * @param array<string, string> $patterns
+     *
+     * @return string
      */
-    public static function replaceSensitiveRegexPatterns(string $source, array $patterns): string
+    public static function replaceSensitiveRegexPatterns($source, array $patterns)
     {
         foreach ($patterns as $pattern => $replacement) {
             $matches = [];
 
             preg_match_all($pattern, $source, $matches);
 
-            $matches = array_unique($matches[0] ?? []);
+            $matches = array_unique(isset($matches[0]) ? $matches[0] : []);
 
             foreach ($matches as $match) {
                 $value = is_callable($replacement) ? $replacement($match) : $replacement;

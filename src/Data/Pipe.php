@@ -1,29 +1,40 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Data;
-
-use Closure;
-use Saloon\Enums\PipeOrder;
 
 class Pipe
 {
     /**
      * The callable inside the pipe
+     *
+     * @var callable(mixed $payload): (mixed)
      */
-    public readonly Closure $callable;
+    public $callable;
+
+    /**
+     * @var string|null
+     */
+    public $name;
+
+    /**
+     * @var string|null
+     */
+    public $order;
 
     /**
      * Constructor
      *
      * @param callable(mixed $payload): (mixed) $callable
+     * @param ?string $name
+     * @param ?string $order
      */
     public function __construct(
-        callable                   $callable,
-        public readonly ?string    $name = null,
-        public readonly ?PipeOrder $order = null,
+        callable $callable,
+        $name = null,
+        $order = null
     ) {
-        $this->callable = $callable(...);
+        $this->callable = $callable;
+        $this->name = $name;
+        $this->order = $order;
     }
 }

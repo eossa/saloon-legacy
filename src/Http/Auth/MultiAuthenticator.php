@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Auth;
 
 use Saloon\Http\PendingRequest;
@@ -12,9 +10,9 @@ class MultiAuthenticator implements Authenticator
     /**
      * Authenticators
      *
-     * @var array<\Saloon\Contracts\Authenticator>
+     * @var array<Authenticator>
      */
-    protected readonly array $authenticators;
+    protected $authenticators;
 
     /**
      * Constructor
@@ -26,8 +24,10 @@ class MultiAuthenticator implements Authenticator
 
     /**
      * Apply the authentication to the request.
+     *
+     * @return void
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         foreach ($this->authenticators as $authenticator) {
             $authenticator->set($pendingRequest);

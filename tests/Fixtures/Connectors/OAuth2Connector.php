@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -14,16 +12,20 @@ class OAuth2Connector extends Connector
 
     /**
      * Define the base URL.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return 'https://oauth.saloon.dev';
     }
 
     /**
      * Define default Oauth config.
+     *
+     * @return OAuthConfig
      */
-    protected function defaultOauthConfig(): OAuthConfig
+    protected function defaultOauthConfig()
     {
         return OAuthConfig::make()
             ->setClientId('client-id')

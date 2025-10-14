@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Psr\Http\Message\StreamInterface;
@@ -11,8 +9,12 @@ trait CreatesStreamFromString
 {
     /**
      * Convert the body repository into a stream
+     *
+     * @param StreamFactoryInterface $streamFactory
+     *
+     * @return StreamInterface
      */
-    public function toStream(StreamFactoryInterface $streamFactory): StreamInterface
+    public function toStream(StreamFactoryInterface $streamFactory)
     {
         return $streamFactory->createStream((string)$this);
     }

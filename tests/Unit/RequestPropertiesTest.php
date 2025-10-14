@@ -1,25 +1,31 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Repositories\ArrayStore;
 use Saloon\Helpers\MiddlewarePipeline;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Requests\DefaultPropertiesRequest;
+use PHPUnit\Framework\TestCase;
 
-test('you can retrieve all the request parameters methods', function () {
-    $request = new UserRequest;
+class RequestPropertiesTest extends TestCase
+{
+    public function testYouCanRetrieveAllTheRequestParametersMethods()
+    {
+        $request = new UserRequest();
 
-    expect($request->headers())->toBeInstanceOf(ArrayStore::class);
-    expect($request->query())->toBeInstanceOf(ArrayStore::class);
-    expect($request->config())->toBeInstanceOf(ArrayStore::class);
-    expect($request->middleware())->toBeInstanceOf(MiddlewarePipeline::class);
-});
+        $this->assertInstanceOf(ArrayStore::class, $request->headers());
+        $this->assertInstanceOf(ArrayStore::class, $request->query());
+        $this->assertInstanceOf(ArrayStore::class, $request->config());
+        $this->assertInstanceOf(MiddlewarePipeline::class, $request->middleware());
+    }
 
-test('all of the request properties can have default properties', function () {
-    $request = new DefaultPropertiesRequest;
+    public function testAllOfTheRequestPropertiesCanHaveDefaultProperties()
+    {
+        $request = new DefaultPropertiesRequest();
 
-    expect($request->headers())->toEqual(new ArrayStore(['X-Favourite-Artist' => 'Luke Combs']));
-    expect($request->query())->toEqual(new ArrayStore(['format' => 'json']));
-    expect($request->config())->toEqual(new ArrayStore(['debug' => true]));
-});
+        $this->assertEquals(new ArrayStore(['X-Favourite-Artist' => 'Luke Combs']), $request->headers());
+        $this->assertEquals(new ArrayStore(['format' => 'json']), $request->query());
+        $this->assertEquals(new ArrayStore(['debug' => true]), $request->config());
+    }
+}

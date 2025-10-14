@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Exceptions\Request;
 
-use Throwable;
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use Saloon\Helpers\StatusCodeHelper;
@@ -21,24 +19,33 @@ class RequestException extends SaloonException
 {
     /**
      * The Saloon Response
+     *
+     * @var Response
      */
-    protected Response $response;
+    protected $response;
 
     /**
      * Maximum length allowed for the body
+     *
+     * @var int
      */
-    protected int $maxBodyLength = 200;
+    protected $maxBodyLength = 200;
 
     /**
      * Create the RequestException
+     *
+     * @param ?string $message
+     * @param int $code
+     * @param ?Exception $previous
      */
-    public function __construct(Response $response, ?string $message = null, int $code = 0, ?Throwable $previous = null)
+    public function __construct(Response $response, $message = null, $code = 0, $previous = null)
     {
         $this->response = $response;
 
         if (is_null($message)) {
             $status = $this->getStatus();
-            $statusCodeMessage = $this->getStatusMessage() ?? 'Unknown Status';
+            $statusMessage = $this->getStatusMessage();
+            $statusCodeMessage = isset($statusMessage) ? $statusMessage : 'Unknown Status';
             $rawBody = $response->body();
             $exceptionBodyMessage = mb_strlen($rawBody) > $this->maxBodyLength ? mb_substr($rawBody, 0, $this->maxBodyLength) : $rawBody;
 
@@ -50,32 +57,40 @@ class RequestException extends SaloonException
 
     /**
      * Get the Saloon Response Class.
+     *
+     * @return Response
      */
-    public function getResponse(): Response
+    public function getResponse()
     {
         return $this->response;
     }
 
     /**
      * Get the pending request.
+     *
+     * @return PendingRequest
      */
-    public function getPendingRequest(): PendingRequest
+    public function getPendingRequest()
     {
         return $this->getResponse()->getPendingRequest();
     }
 
     /**
      * Get the HTTP status code
+     *
+     * @return int
      */
-    public function getStatus(): int
+    public function getStatus()
     {
         return $this->response->status();
     }
 
     /**
      * Get the status message
+     *
+     * @return ?string
      */
-    public function getStatusMessage(): ?string
+    public function getStatusMessage()
     {
         return StatusCodeHelper::getMessage($this->getStatus());
     }

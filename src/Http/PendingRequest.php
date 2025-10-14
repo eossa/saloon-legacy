@@ -1,11 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 use Saloon\Config;
-use Saloon\Enums\Method;
+use Saloon\Exceptions\DuplicatePipeNameException;
 use Saloon\Helpers\Helpers;
 use Saloon\Traits\Macroable;
 use Saloon\Helpers\URLHelper;
@@ -41,43 +39,61 @@ class PendingRequest
 
     /**
      * The connector making the request.
+     *
+     * @var Connector
      */
-    protected Connector $connector;
+    protected $connector;
 
     /**
      * The request used by the instance.
+     *
+     * @var Request
      */
-    protected Request $request;
+    protected $request;
 
     /**
      * The method the request will use.
+     *
+     * @var string
      */
-    protected Method $method;
+    protected $method;
 
     /**
      * The URL the request will be made to.
+     *
+     * @var string
      */
-    protected string $url;
+    protected $url;
 
     /**
      * The body of the request.
+     *
+     * @var BodyRepository|null
      */
-    protected ?BodyRepository $body = null;
+    protected $body = null;
 
     /**
      * The simulated response.
+     *
+     * @var FakeResponse|null
      */
-    protected ?FakeResponse $fakeResponse = null;
+    protected $fakeResponse = null;
 
     /**
      * Determine if the pending request is asynchronous
+     *
+     * @var bool
      */
-    protected bool $asynchronous = false;
+    protected $asynchronous = false;
 
     /**
      * Build up the request payload.
+     *
+     * @param Connector $connector
+     * @param Request $request
+     * @param MockClient|null $mockClient
      */
-    public function __construct(Connector $connector, Request $request, ?MockClient $mockClient = null)
+    public function __construct(Connector $connector, Request $request, MockClient $mockClient = null)
     {
         // Let's start by getting our PSR factory collection. This object contains all the
         // relevant factories for creating PSR-7 requests as well as URIs and streams.
@@ -90,8 +106,19 @@ class PendingRequest
         $this->request = $request;
         $this->method = $request->getMethod();
         $this->url = URLHelper::join($this->connector->resolveBaseUrl(), $this->request->resolveEndpoint());
-        $this->authenticator = $request->getAuthenticator() ?? $connector->getAuthenticator();
-        $this->mockClient = $mockClient ?? $request->getMockClient() ?? $connector->getMockClient() ?? MockClient::getGlobal();
+        $requestAuthenticator = $request->getAuthenticator();
+        $connectorAuthenticator = $connector->getAuthenticator();
+        $this->authenticator = isset($requestAuthenticator) ? $requestAuthenticator : $connectorAuthenticator;
+        $requestMockClient = $request->getMockClient();
+        $connectorMockClient = $connector->getMockClient();
+        $globalMockClient = MockClient::getGlobal();
+        $this->mockClient = isset($mockClient)
+            ? $mockClient
+            : (
+                isset($requestMockClient)
+                    ? $requestMockClient
+                    : (isset($connectorMockClient) ? $connectorMockClient : $globalMockClient)
+            );
 
         // Now, we'll register our global middleware and our mock response middleware.
         // Registering these middleware first means that the mock client can set
@@ -133,7 +160,7 @@ class PendingRequest
      *
      * @return $this
      */
-    public function authenticate(Authenticator $authenticator): static
+    public function authenticate(Authenticator $authenticator)
     {
         $this->authenticator = $authenticator;
 
@@ -147,40 +174,50 @@ class PendingRequest
 
     /**
      * Execute the response pipeline.
+     *
+     * @return Response
      */
-    public function executeResponsePipeline(Response $response): Response
+    public function executeResponsePipeline(Response $response)
     {
         return $this->middleware()->executeResponsePipeline($response);
     }
 
     /**
      * Execute the fatal pipeline.
+     *
+     * @return void
      */
-    public function executeFatalPipeline(FatalRequestException $throwable): void
+    public function executeFatalPipeline(FatalRequestException $throwable)
     {
         $this->middleware()->executeFatalPipeline($throwable);
     }
 
     /**
      * Get the request.
+     *
+     * @return Request
      */
-    public function getRequest(): Request
+    public function getRequest()
     {
         return $this->request;
     }
 
     /**
      * Get the connector.
+     *
+     * @return Connector
      */
-    public function getConnector(): Connector
+    public function getConnector()
     {
         return $this->connector;
     }
 
     /**
      * Get the URL of the request.
+     *
+     * @returns string
      */
-    public function getUrl(): string
+    public function getUrl()
     {
         return $this->url;
     }
@@ -191,9 +228,11 @@ class PendingRequest
      * Note: This will be combined with the query parameters to create
      * a UriInterface that will be passed to a PSR-7 request.
      *
+     * @param string $url
+     *
      * @return $this
      */
-    public function setUrl(string $url): static
+    public function setUrl($url)
     {
         $this->url = $url;
 
@@ -202,8 +241,10 @@ class PendingRequest
 
     /**
      * Get the HTTP method used for the request
+     *
+     * @return string
      */
-    public function getMethod(): Method
+    public function getMethod()
     {
         return $this->method;
     }
@@ -211,9 +252,11 @@ class PendingRequest
     /**
      * Set the method of the PendingRequest
      *
+     * @param string $method
+     *
      * @return $this
      */
-    public function setMethod(Method $method): static
+    public function setMethod($method)
     {
         $this->method = $method;
 
@@ -222,8 +265,10 @@ class PendingRequest
 
     /**
      * Retrieve the body on the instance
+     *
+     * @return BodyRepository|null
      */
-    public function body(): ?BodyRepository
+    public function body()
     {
         return $this->body;
     }
@@ -233,7 +278,7 @@ class PendingRequest
      *
      * @return $this
      */
-    public function setBody(?BodyRepository $body): static
+    public function setBody(BodyRepository $body = null)
     {
         $this->body = $body;
 
@@ -242,8 +287,10 @@ class PendingRequest
 
     /**
      * Get the fake response
+     *
+     * @return FakeResponse|null
      */
-    public function getFakeResponse(): ?FakeResponse
+    public function getFakeResponse()
     {
         return $this->fakeResponse;
     }
@@ -253,7 +300,7 @@ class PendingRequest
      *
      * @return $this
      */
-    public function setFakeResponse(?FakeResponse $fakeResponse): static
+    public function setFakeResponse(FakeResponse $fakeResponse = null)
     {
         $this->fakeResponse = $fakeResponse;
 
@@ -262,16 +309,20 @@ class PendingRequest
 
     /**
      * Check if a fake response has been set
+     *
+     * @return bool
      */
-    public function hasFakeResponse(): bool
+    public function hasFakeResponse()
     {
         return $this->fakeResponse instanceof FakeResponse;
     }
 
     /**
      * Check if the request is asynchronous
+     *
+     * @return bool
      */
-    public function isAsynchronous(): bool
+    public function isAsynchronous()
     {
         return $this->asynchronous;
     }
@@ -279,9 +330,11 @@ class PendingRequest
     /**
      * Set if the request is going to be sent asynchronously
      *
+     * @var bool $asynchronous
+     *
      * @return $this
      */
-    public function setAsynchronous(bool $asynchronous): static
+    public function setAsynchronous($asynchronous)
     {
         $this->asynchronous = $asynchronous;
 
@@ -291,12 +344,17 @@ class PendingRequest
     /**
      * Get the response class
      *
-     * @return class-string<\Saloon\Http\Response>
-     * @throws \Saloon\Exceptions\InvalidResponseClassException
+     * @return class-string<Response>
+     *
+     * @throws InvalidResponseClassException
      */
-    public function getResponseClass(): string
+    public function getResponseClass()
     {
-        $response = $this->request->resolveResponseClass() ?? $this->connector->resolveResponseClass() ?? Response::class;
+        $requestResponseClass = $this->request->resolveResponseClass();
+        $connectorResponseClass = $this->connector->resolveResponseClass();
+        $response = isset($requestResponseClass)
+            ? $requestResponseClass
+            : (isset($connectorResponseClass) ? $connectorResponseClass : Response::class);
 
         if (! class_exists($response) || ! Helpers::isSubclassOf($response, Response::class)) {
             throw new InvalidResponseClassException;
@@ -310,7 +368,7 @@ class PendingRequest
      *
      * @return $this
      */
-    protected function tap(callable $callable): static
+    protected function tap(callable $callable)
     {
         $callable($this);
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,29 +13,39 @@ class HeaderRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = HeaderConnector::class;
+    protected $connector = HeaderConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    protected function defaultHeaders(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultHeaders()
     {
         return [
             'X-Custom-Header' => 'Howdy',
         ];
     }
 
-    protected function defaultConfig(): array
+    /**
+     * @return int[]
+     */
+    protected function defaultConfig()
     {
         return [
             'timeout' => 5,

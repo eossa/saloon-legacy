@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -13,8 +11,10 @@ class InvalidConnectionConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return 'https://invalid.saloon.dev';
     }
@@ -24,7 +24,7 @@ class InvalidConnectionConnector extends Connector
      *
      * @return string[]
      */
-    protected function defaultHeaders(): array
+    protected function defaultHeaders()
     {
         return [];
     }

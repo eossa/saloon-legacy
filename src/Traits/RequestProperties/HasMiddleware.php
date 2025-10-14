@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\RequestProperties;
 
 use Saloon\Helpers\MiddlewarePipeline;
@@ -10,14 +8,21 @@ trait HasMiddleware
 {
     /**
      * Middleware Pipeline
+     *
+     * @var MiddlewarePipeline
      */
-    protected MiddlewarePipeline $middlewarePipeline;
+    protected $middlewarePipeline;
 
     /**
      * Access the middleware pipeline
+     *
+     * @return MiddlewarePipeline
      */
-    public function middleware(): MiddlewarePipeline
+    public function middleware()
     {
-        return $this->middlewarePipeline ??= new MiddlewarePipeline;
+        if (isset($this->middlewarePipeline)) {
+            return $this->middlewarePipeline;
+        }
+        return $this->middlewarePipeline = new MiddlewarePipeline();
     }
 }

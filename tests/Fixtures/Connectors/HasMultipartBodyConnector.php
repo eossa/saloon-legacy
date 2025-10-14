@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -15,22 +13,33 @@ class HasMultipartBodyConnector extends Connector implements HasBody
     use AcceptsJson;
     use HasMultipartBody;
 
-    public bool $unique = false;
+    /**
+     * @var bool
+     */
+    public $unique = false;
+    /**
+     * @var string|null
+     */
+    private $url;
 
     /**
      * Constructor
+     *
+     * @param string|null $url
      */
-    public function __construct(protected ?string $url = null)
+    public function __construct($url = null)
     {
-        //
+        $this->url = $url;
     }
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
-        return $this->url ?? apiUrl();
+        return isset($this->url) ? $this->url : apiUrl();
     }
 
     /**
@@ -38,14 +47,17 @@ class HasMultipartBodyConnector extends Connector implements HasBody
      *
      * @return string[]
      */
-    protected function defaultHeaders(): array
+    protected function defaultHeaders()
     {
         return [
             'Accept' => 'application/json',
         ];
     }
 
-    protected function defaultBody(): array
+    /**
+     * @return array
+     */
+    protected function defaultBody()
     {
         return [
             new MultipartValue('nickname', 'Gareth', 'user.txt', ['X-Saloon' => 'Yee-haw!']),

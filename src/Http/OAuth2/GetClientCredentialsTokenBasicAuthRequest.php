@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\OAuth2;
 
 use Saloon\Enums\Method;
@@ -20,13 +18,32 @@ class GetClientCredentialsTokenBasicAuthRequest extends Request implements HasBo
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::POST;
+    protected $method = Method::POST;
+
+    /**
+     * @var OAuthConfig
+     */
+    protected $oauthConfig;
+
+    /**
+     * @var string[]
+     */
+    protected $scopes;
+
+    /**
+     * @var string
+     */
+    protected $scopeSeparator;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->oauthConfig->getTokenEndpoint();
     }
@@ -34,11 +51,15 @@ class GetClientCredentialsTokenBasicAuthRequest extends Request implements HasBo
     /**
      * Requires the authorization code and OAuth 2 config.
      *
+     * @param OAuthConfig $oauthConfig
      * @param array<string> $scopes
+     * @param string $scopeSeparator
      */
-    public function __construct(protected OAuthConfig $oauthConfig, protected array $scopes = [], protected string $scopeSeparator = ' ')
+    public function __construct(OAuthConfig $oauthConfig, array $scopes = [], $scopeSeparator = ' ')
     {
-        //
+        $this->oauthConfig = $oauthConfig;
+        $this->scopes = $scopes;
+        $this->scopeSeparator = $scopeSeparator;
     }
 
     /**
@@ -49,7 +70,7 @@ class GetClientCredentialsTokenBasicAuthRequest extends Request implements HasBo
      *     scope: string,
      * }
      */
-    public function defaultBody(): array
+    public function defaultBody()
     {
         return [
             'grant_type' => 'client_credentials',
@@ -59,8 +80,10 @@ class GetClientCredentialsTokenBasicAuthRequest extends Request implements HasBo
 
     /**
      * Default authenticator used.
+     *
+     * @return Authenticator|null
      */
-    protected function defaultAuth(): ?Authenticator
+    protected function defaultAuth()
     {
         return new BasicAuthenticator($this->oauthConfig->getClientId(), $this->oauthConfig->getClientSecret());
     }

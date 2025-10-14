@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Http\Faking\MockClient;
 use Saloon\Helpers\StatusCodeHelper;
@@ -21,50 +21,72 @@ use Saloon\Exceptions\Request\Statuses\MethodNotAllowedException;
 use Saloon\Exceptions\Request\Statuses\ServiceUnavailableException;
 use Saloon\Exceptions\Request\Statuses\InternalServerErrorException;
 use Saloon\Exceptions\Request\Statuses\UnprocessableEntityException;
+use PHPUnit\Framework\TestCase;
 
-test('the response will return different exceptions based on status', function (int $status, string $expectedException) {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Oh yee-naw!'], $status),
-    ]);
+class RequestExceptionTest extends TestCase
+{
+    /**
+     * @dataProvider statusCodeExceptionProvider
+     */
+    public function testTheResponseWillReturnDifferentExceptionsBasedOnStatus($status, $expectedException)
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Oh yee-naw!'], $status),
+        ]);
 
-    $response = TestConnector::make()->send(new UserRequest, $mockClient);
-    $exception = $response->toException();
+        $response = TestConnector::make()->send(new UserRequest(), $mockClient);
+        $exception = $response->toException();
 
-    $message = sprintf('%s (%s) Response: %s', StatusCodeHelper::getMessage($status), $status, $response->body());
+        $message = sprintf('%s (%s) Response: %s', StatusCodeHelper::getMessage($status), $status, $response->body());
 
-    expect($exception)->toBeInstanceOf($expectedException);
-    expect($exception->getMessage())->toEqual($message);
-})->with([
-    [401, UnauthorizedException::class],
-    [402, PaymentRequiredException::class],
-    [403, ForbiddenException::class],
-    [404, NotFoundException::class],
-    [405, MethodNotAllowedException::class],
-    [408, RequestTimeOutException::class],
-    [422, UnprocessableEntityException::class],
-    [429, TooManyRequestsException::class],
-    [500, InternalServerErrorException::class],
-    [503, ServiceUnavailableException::class],
-    [504, GatewayTimeoutException::class],
-    [418, ClientException::class],
-    [411, ClientException::class],
-]);
+        $this->assertInstanceOf($expectedException, $exception);
+        $this->assertEquals($message, $exception->getMessage());
+    }
 
-test('when the failed method is customised the response will return ok request exceptions', function (int $status, string $expectedException) {
-    $mockClient = new MockClient([
-        MockResponse::make(['message' => 'Oh yee-naw!'], $status),
-    ]);
+    public function statusCodeExceptionProvider()
+    {
+        return [
+            'unauthorized' => [401, UnauthorizedException::class],
+            'payment_required' => [402, PaymentRequiredException::class],
+            'forbidden' => [403, ForbiddenException::class],
+            'not_found' => [404, NotFoundException::class],
+            'method_not_allowed' => [405, MethodNotAllowedException::class],
+            'request_timeout' => [408, RequestTimeOutException::class],
+            'unprocessable_entity' => [422, UnprocessableEntityException::class],
+            'too_many_requests' => [429, TooManyRequestsException::class],
+            'internal_server_error' => [500, InternalServerErrorException::class],
+            'service_unavailable' => [503, ServiceUnavailableException::class],
+            'gateway_timeout' => [504, GatewayTimeoutException::class],
+            'client_error_418' => [418, ClientException::class],
+            'client_error_411' => [411, ClientException::class],
+        ];
+    }
 
-    $response = TestConnector::make()->send(new AlwaysHasFailureRequest, $mockClient);
-    $exception = $response->toException();
+    /**
+     * @dataProvider customFailureStatusProvider
+     */
+    public function testWhenTheFailedMethodIsCustomisedTheResponseWillReturnOkRequestExceptions($status, $expectedException)
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['message' => 'Oh yee-naw!'], $status),
+        ]);
 
-    $message = sprintf('%s (%s) Response: %s', StatusCodeHelper::getMessage($status), $status, $response->body());
+        $response = TestConnector::make()->send(new AlwaysHasFailureRequest(), $mockClient);
+        $exception = $response->toException();
 
-    expect($exception)->toBeInstanceOf($expectedException);
-    expect($exception->getMessage())->toEqual($message);
-})->with([
-    [302, RequestException::class],
-    [200, RequestException::class],
-    [201, RequestException::class],
-    [100, RequestException::class],
-]);
+        $message = sprintf('%s (%s) Response: %s', StatusCodeHelper::getMessage($status), $status, $response->body());
+
+        $this->assertInstanceOf($expectedException, $exception);
+        $this->assertEquals($message, $exception->getMessage());
+    }
+
+    public function customFailureStatusProvider()
+    {
+        return [
+            'redirect_302' => [302, RequestException::class],
+            'success_200' => [200, RequestException::class],
+            'created_201' => [201, RequestException::class],
+            'continue_100' => [100, RequestException::class],
+        ];
+    }
+}

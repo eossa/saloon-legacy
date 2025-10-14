@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
-use Throwable;
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Http\Connector;
 use Saloon\Traits\Plugins\AcceptsJson;
@@ -16,16 +14,23 @@ class CustomExceptionConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
     /**
      * Customise the request exception handler
+     *
+     * @param Response $response
+     * @param Exception|null $senderException
+     *
+     * @return Exception|null
      */
-    public function getRequestException(Response $response, ?Throwable $senderException): ?Throwable
+    public function getRequestException(Response $response, Exception $senderException = null)
     {
         return new ConnectorRequestException($response, 'Oh yee-naw.', 0, $senderException);
     }

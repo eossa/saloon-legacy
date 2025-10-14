@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Debuggers;
 
 use Saloon\Debugging\DebugData;
@@ -9,8 +7,11 @@ use Saloon\Debugging\Drivers\DebuggingDriver;
 
 class MissingDependencyDebugger extends DebuggingDriver
 {
-    
-    public function name(): string
+
+    /**
+     * @return string
+     */
+    public function name()
     {
         return 'missingDependency';
     }
@@ -19,14 +20,19 @@ class MissingDependencyDebugger extends DebuggingDriver
      * Determines if the debugging driver can be used
      *
      * E.g if it has the correct dependencies
+     *
+     * @return bool
      */
-    public function hasDependencies(): bool
+    public function hasDependencies()
     {
         return false;
     }
 
-    
-    public function send(DebugData $data): void
+
+    /**
+     * @return void
+     */
+    public function send(DebugData $data)
     {
         //
     }

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -8,36 +8,43 @@ use Saloon\Tests\Fixtures\Responses\UserData;
 use Saloon\Tests\Fixtures\Responses\UserResponse;
 use Saloon\Repositories\Body\StringBodyRepository;
 use Saloon\Tests\Fixtures\Requests\UserRequestWithCustomResponse;
+use PHPUnit\Framework\TestCase;
 
-test('pulling a response from the sequence will return the correct response', function () {
-    $responseA = MockResponse::make();
-    $responseB = MockResponse::make([], 500);
-    $responseC = MockResponse::make([], 500);
+class MockResponseTest extends TestCase
+{
+    public function testPullingAResponseFromTheSequenceWillReturnTheCorrectResponse()
+    {
+        $responseA = MockResponse::make();
+        $responseB = MockResponse::make([], 500);
+        $responseC = MockResponse::make([], 500);
 
-    $mockClient = new MockClient([$responseA, $responseB, $responseC]);
+        $mockClient = new MockClient([$responseA, $responseB, $responseC]);
 
-    expect($mockClient->getNextFromSequence()->status())->toEqual($responseA->status());
-    expect($mockClient->getNextFromSequence()->status())->toEqual($responseB->status());
-    expect($mockClient->getNextFromSequence()->status())->toEqual($responseC->status());
-    expect($mockClient->isEmpty())->toBeTrue();
-});
+        $this->assertEquals($responseA->status(), $mockClient->getNextFromSequence()->status());
+        $this->assertEquals($responseB->status(), $mockClient->getNextFromSequence()->status());
+        $this->assertEquals($responseC->status(), $mockClient->getNextFromSequence()->status());
+        $this->assertTrue($mockClient->isEmpty());
+    }
 
-test('a mock response can have raw body data', function () {
-    $response = MockResponse::make('xml', 200, ['Content-Type' => 'application/json']);
+    public function testAMockResponseCanHaveRawBodyData()
+    {
+        $response = MockResponse::make('xml', 200, ['Content-Type' => 'application/json']);
 
-    expect($response->headers()->all())->toEqual(['Content-Type' => 'application/json']);
-    expect($response->status())->toEqual(200);
-    expect($response->body())->toBeInstanceOf(StringBodyRepository::class);
-    expect($response->body()->all())->toEqual('xml');
-});
+        $this->assertEquals(['Content-Type' => 'application/json'], $response->headers()->all());
+        $this->assertEquals(200, $response->status());
+        $this->assertInstanceOf(StringBodyRepository::class, $response->body());
+        $this->assertEquals('xml', $response->body()->all());
+    }
 
-test('a response can be a custom response class', function () {
-    $mockClient = new MockClient([MockResponse::make(['foo' => 'bar'])]);
-    $request = new UserRequestWithCustomResponse();
+    public function testAResponseCanBeACustomResponseClass()
+    {
+        $mockClient = new MockClient([MockResponse::make(['foo' => 'bar'])]);
+        $request = new UserRequestWithCustomResponse();
 
-    $response = connector()->send($request, $mockClient);
+        $response = connector()->send($request, $mockClient);
 
-    expect($response)->toBeInstanceOf(UserResponse::class);
-    expect($response)->customCastMethod()->toBeInstanceOf(UserData::class);
-    expect($response)->foo()->toBe('bar');
-});
+        $this->assertInstanceOf(UserResponse::class, $response);
+        $this->assertInstanceOf(UserData::class, $response->customCastMethod());
+        $this->assertEquals('bar', $response->foo());
+    }
+}

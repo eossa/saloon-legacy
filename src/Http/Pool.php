@@ -1,61 +1,62 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 use Closure;
-use Generator;
 use GuzzleHttp\Promise\EachPromise;
 use GuzzleHttp\Promise\PromiseInterface;
 use Saloon\Exceptions\InvalidPoolItemException;
+use Traversable;
 
 class Pool
 {
     /**
      * Requests inside the pool
      *
-     * @var iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request>
+     * @var iterable<PromiseInterface|Request>
      */
-    protected iterable $requests;
+    protected $requests;
 
     /**
      * Handle Response Callback
      *
-     * @var \Closure(\Saloon\Http\Response, array-key, \GuzzleHttp\Promise\PromiseInterface): (void)|null
+     * @var Closure(Response, array-key, PromiseInterface): (void)|null
      */
-    protected ?Closure $responseHandler = null;
+    protected $responseHandler = null;
 
     /**
      * Handle Exception Callback
      *
-     * @var \Closure(mixed, array-key, \GuzzleHttp\Promise\PromiseInterface): (void)|null
+     * @var Closure(mixed, array-key, PromiseInterface): (void)|null
      */
-    protected ?Closure $exceptionHandler = null;
+    protected $exceptionHandler = null;
 
     /**
      * Connector
+     *
+     * @var Connector
      */
-    protected Connector $connector;
+    protected $connector;
 
     /**
      * Concurrency
      *
      * How many requests will be sent at once.
      *
-     * @var int|\Closure(int): int
+     * @var int|Closure(int): int
      */
-    protected int|Closure $concurrency;
+    protected $concurrency;
 
     /**
      * Constructor
      *
-     * @param iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request>|callable(\Saloon\Http\Connector): iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request> $requests
-     * @param int|callable(int $pendingRequests): (int) $concurrency
-     * @param callable(\Saloon\Http\Response, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void)|null $responseHandler
-     * @param callable(mixed $reason, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void)|null $exceptionHandler
+     * @param Connector $connector
+     * @param callable|iterable $requests
+     * @param callable|int $concurrency
+     * @param callable(Response, array-key $key, PromiseInterface $poolAggregate): (void)|null $responseHandler
+     * @param callable(mixed $reason, array-key $key, PromiseInterface $poolAggregate): (void)|null $exceptionHandler
      */
-    public function __construct(Connector $connector, iterable|callable $requests = [], int|callable $concurrency = 5, callable|null $responseHandler = null, callable|null $exceptionHandler = null)
+    public function __construct(Connector $connector, $requests = [], $concurrency = 5, callable $responseHandler = null, callable $exceptionHandler = null)
     {
         $this->connector = $connector;
         $this->setRequests($requests);
@@ -73,12 +74,12 @@ class Pool
     /**
      * Specify a callback to happen for each successful request
      *
-     * @param callable(\Saloon\Http\Response, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void) $callable
+     * @param callable(Response, array-key $key, PromiseInterface $poolAggregate): (void) $callable
      * @return $this
      */
-    public function withResponseHandler(callable $callable): static
+    public function withResponseHandler(callable $callable)
     {
-        $this->responseHandler = $callable(...);
+        $this->responseHandler = $callable;
 
         return $this;
     }
@@ -86,12 +87,13 @@ class Pool
     /**
      * Specify a callback to happen for each failed request
      *
-     * @param callable(mixed $reason, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void) $callable
+     * @param callable(mixed $reason, array-key $key, PromiseInterface $poolAggregate): (void) $callable
+     *
      * @return $this
      */
-    public function withExceptionHandler(callable $callable): static
+    public function withExceptionHandler(callable $callable)
     {
-        $this->exceptionHandler = $callable(...);
+        $this->exceptionHandler = $callable;
 
         return $this;
     }
@@ -100,11 +102,16 @@ class Pool
      * Set the amount of concurrent requests that should be sent
      *
      * @param int|callable(int $pendingRequests): (int) $concurrency
+     *
      * @return $this
      */
-    public function setConcurrency(int|callable $concurrency): static
+    public function setConcurrency($concurrency)
     {
-        $this->concurrency = is_callable($concurrency) ? $concurrency(...) : $concurrency;
+        $this->concurrency = is_callable($concurrency)
+            ? function ($pendingRequests) use ($concurrency) {
+                return $concurrency($pendingRequests);
+            }
+            : $concurrency;
 
         return $this;
     }
@@ -112,17 +119,22 @@ class Pool
     /**
      * Set the requests
      *
-     * @param iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request>|callable(\Saloon\Http\Connector): iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request> $requests
+     * @param iterable<PromiseInterface|Request>|callable(Connector): iterable<PromiseInterface|Request> $requests
+     *
      * @return $this
      */
-    public function setRequests(iterable|callable $requests): static
+    public function setRequests($requests)
     {
         if (is_callable($requests)) {
             $requests = $requests($this->connector);
         }
 
-        if (is_iterable($requests)) {
-            $requests = static fn (): Generator => yield from $requests;
+        if (is_array($requests) || $requests instanceof Traversable) {
+            $requests = function () use ($requests) {
+                foreach ($requests as $key => $value) {
+                    yield $key => $value;
+                }
+            };
         }
 
         $this->requests = $requests();
@@ -133,29 +145,38 @@ class Pool
     /**
      * Get the request generator
      *
-     * @return iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request>
+     * @return iterable<PromiseInterface|Request>
      */
-    public function getRequests(): iterable
+    public function getRequests()
     {
         return $this->requests;
     }
 
     /**
      * Send the pool and create a Promise
+     *
+     * @return PromiseInterface
+     *
+     * @throws InvalidPoolItemException
      */
-    public function send(): PromiseInterface
+    public function send()
     {
         // Iterate through the existing generator and "prepare" the requests.
         // If they are SaloonRequests then we should convert them into
         // promises.
 
-        $preparedRequests = function (): Generator {
+        $preparedRequests = function () {
             foreach ($this->requests as $key => $request) {
-                match (true) {
-                    $request instanceof Request => yield $key => $this->connector->sendAsync($request),
-                    $request instanceof PromiseInterface => yield $key => $request,
-                    default => throw new InvalidPoolItemException
-                };
+                switch (true) {
+                    case $request instanceof Request:
+                        yield $key => $this->connector->sendAsync($request);
+                        break;
+                    case $request instanceof PromiseInterface:
+                        yield $key => $request;
+                        break;
+                    default:
+                        throw new InvalidPoolItemException;
+                }
             }
         };
 

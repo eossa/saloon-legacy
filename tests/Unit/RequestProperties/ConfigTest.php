@@ -1,84 +1,91 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\RequestProperties;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\ArrayStore;
 use Saloon\Tests\Fixtures\Requests\ConfigRequest;
 use Saloon\Tests\Fixtures\Connectors\ConfigConnector;
 
-test('default config is merged in from a request', function () {
-    $request = new ConfigRequest();
+class ConfigTest extends TestCase
+{
+    public function testDefaultConfigIsMergedInFromARequest()
+    {
+        $request = new ConfigRequest();
 
-    $config = $request->config();
+        $config = $request->config();
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
-    expect($config)->toEqual(new ArrayStore(['debug' => false]));
-});
+        $this->assertInstanceOf(ArrayStore::class, $config);
+        $this->assertEquals(new ArrayStore(['debug' => false]), $config);
+    }
 
-test('config can be managed on a request', function () {
-    $request = new ConfigRequest();
+    public function testConfigCanBeManagedOnARequest()
+    {
+        $request = new ConfigRequest();
 
-    $config = $request->config()->add('timeout', 60);
+        $config = $request->config()->add('timeout', 60);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    $config = $request->config()->merge(['name' => 'Sam', 'category' => 'Cowboy'], ['connect_timeout' => 200]);
+        $config = $request->config()->merge(['name' => 'Sam', 'category' => 'Cowboy'], ['connect_timeout' => 200]);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    $config = $request->config()->remove('category');
+        $config = $request->config()->remove('category');
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    expect($config->all())->toEqual([
-        'timeout' => 60,
-        'name' => 'Sam',
-        'connect_timeout' => 200,
-        'debug' => false,
-    ]);
+        $this->assertEquals([
+            'timeout' => 60,
+            'name' => 'Sam',
+            'connect_timeout' => 200,
+            'debug' => false,
+        ], $config->all());
 
-    expect($config->get('timeout'))->toEqual(60);
+        $this->assertEquals(60, $config->get('timeout'));
 
-    $config = $request->config()->set(['debug' => true]);
+        $config = $request->config()->set(['debug' => true]);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    expect($request->config()->all())->toEqual(['debug' => true]);
+        $this->assertEquals(['debug' => true], $request->config()->all());
 
-    expect($request->config()->isEmpty())->toBeFalse();
-    expect($request->config()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($request->config()->isEmpty());
+        $this->assertTrue($request->config()->isNotEmpty());
+    }
 
-test('config can be managed on a connector', function () {
-    $connector = new ConfigConnector();
+    public function testConfigCanBeManagedOnAConnector()
+    {
+        $connector = new ConfigConnector();
 
-    $config = $connector->config()->add('timeout', 60);
+        $config = $connector->config()->add('timeout', 60);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    $config = $connector->config()->merge(['name' => 'Sam', 'category' => 'Cowboy'], ['connect_timeout' => 200]);
+        $config = $connector->config()->merge(['name' => 'Sam', 'category' => 'Cowboy'], ['connect_timeout' => 200]);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    $config = $connector->config()->remove('category');
+        $config = $connector->config()->remove('category');
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    expect($config->all())->toEqual([
-        'timeout' => 60,
-        'name' => 'Sam',
-        'connect_timeout' => 200,
-        'debug' => false,
-    ]);
+        $this->assertEquals([
+            'timeout' => 60,
+            'name' => 'Sam',
+            'connect_timeout' => 200,
+            'debug' => false,
+        ], $config->all());
 
-    expect($config->get('timeout'))->toEqual(60);
+        $this->assertEquals(60, $config->get('timeout'));
 
-    $config = $connector->config()->set(['debug' => true]);
+        $config = $connector->config()->set(['debug' => true]);
 
-    expect($config)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $config);
 
-    expect($connector->config()->all())->toEqual(['debug' => true]);
+        $this->assertEquals(['debug' => true], $connector->config()->all());
 
-    expect($connector->config()->isEmpty())->toBeFalse();
-    expect($connector->config()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($connector->config()->isEmpty());
+        $this->assertTrue($connector->config()->isNotEmpty());
+    }
+}

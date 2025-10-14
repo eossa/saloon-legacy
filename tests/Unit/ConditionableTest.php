@@ -1,137 +1,152 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 
-test('you can use the when method to invoke a callback when a given condition is truthy', function () {
-    $request = new UserRequest;
+class ConditionableTest extends TestCase
+{
+    public function testYouCanUseTheWhenMethodToInvokeACallbackWhenAGivenConditionIsTruthy()
+    {
+        $request = new UserRequest();
 
-    $request->when(true, function (UserRequest $request) {
-        $request->headers()->add('X-Name', 'Sam');
-    });
-
-    $request->when(false, function (UserRequest $request) {
-        $request->headers()->add('X-Name', 'Alex');
-    });
-
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Sam');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Alex');
-});
-
-test('you can use the unless method to invoke a callback when a given condition is falsy', function () {
-    $request = new UserRequest;
-
-    $request->unless(true, function (UserRequest $request) {
-        $request->headers()->add('X-Name', 'Sam');
-    });
-
-    $request->unless(false, function (UserRequest $request) {
-        $request->headers()->add('X-Name', 'Alex');
-    });
-
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Alex');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Sam');
-});
-
-test('you can provide a callback as the value of the when condition', function () {
-    $request = new UserRequest;
-
-    $request->when(
-        fn () => true,
-        function (UserRequest $request) {
+        $request->when(true, function (UserRequest $request) {
             $request->headers()->add('X-Name', 'Sam');
-        }
-    );
+        });
 
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Sam');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Alex');
-});
-
-test('you can provide a callback as the value of the unless condition', function () {
-    $request = new UserRequest;
-
-    $request->unless(
-        fn () => false,
-        function (UserRequest $request) {
+        $request->when(false, function (UserRequest $request) {
             $request->headers()->add('X-Name', 'Alex');
-        }
-    );
+        });
 
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Alex');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Sam');
-});
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Sam', $request->headers()->all()['X-Name']);
+        $this->assertArrayNotHasKey('X-Name-Alex', $request->headers()->all());
+    }
 
-test('you can provide a callback as the default value of the when condition', function () {
-    $request = new UserRequest;
+    public function testYouCanUseTheUnlessMethodToInvokeACallbackWhenAGivenConditionIsFalsy()
+    {
+        $request = new UserRequest();
 
-    $request->when(
-        false,
-        function (UserRequest $request) {
+        $request->unless(true, function (UserRequest $request) {
             $request->headers()->add('X-Name', 'Sam');
-        },
-        function (UserRequest $request) {
+        });
+
+        $request->unless(false, function (UserRequest $request) {
             $request->headers()->add('X-Name', 'Alex');
-        }
-    );
+        });
 
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Alex');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Sam');
-});
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Alex', $request->headers()->all()['X-Name']);
+    }
 
-test('you can provide a callback as the default value of the unless condition', function () {
-    $request = new UserRequest;
+    public function testYouCanProvideACallbackAsTheValueOfTheWhenCondition()
+    {
+        $request = new UserRequest();
 
-    $request->unless(
-        true,
-        function (UserRequest $request) {
-            $request->headers()->add('X-Name', 'Sam');
-        },
-        function (UserRequest $request) {
-            $request->headers()->add('X-Name', 'Alex');
-        }
-    );
+        $request->when(
+            function () { return true; },
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Sam');
+            }
+        );
 
-    expect($request->headers()->all())->toHaveKey('X-Name', 'Alex');
-    expect($request->headers()->all())->not->toHaveKey('X-Name', 'Sam');
-});
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Sam', $request->headers()->all()['X-Name']);
+    }
 
-test('it will pass the condition value as the second argument of the callable', function () {
-    $request = new UserRequest;
+    public function testYouCanProvideACallbackAsTheValueOfTheUnlessCondition()
+    {
+        $request = new UserRequest();
 
-    $request->when(true, function (UserRequest $request, mixed $value) {
-        expect($value)->toBeBool();
-        expect($value)->toBeTrue();
-    });
+        $request->unless(
+            function () { return false; },
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Alex');
+            }
+        );
 
-    $request->unless(false, function (UserRequest $request, mixed $value) {
-        expect($value)->toBeBool();
-        expect($value)->toBeFalse();
-    });
-});
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Alex', $request->headers()->all()['X-Name']);
+    }
 
-test('it will pass the condition value as the second argument of the default callable', function () {
-    $request = new UserRequest;
+    public function testYouCanProvideACallbackAsTheDefaultValueOfTheWhenCondition()
+    {
+        $request = new UserRequest();
 
-    $request->when(
-        false,
-        function (UserRequest $request, mixed $value) {
-            //
-        },
-        function (UserRequest $request, mixed $value) {
-            expect($value)->toBeBool();
-            expect($value)->toBeFalse();
-        }
-    );
+        $request->when(
+            false,
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Sam');
+            },
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Alex');
+            }
+        );
 
-    $request->unless(
-        true,
-        function (UserRequest $request, mixed $value) {
-            //
-        },
-        function (UserRequest $request, mixed $value) {
-            expect($value)->toBeBool();
-            expect($value)->toBeTrue();
-        }
-    );
-});
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Alex', $request->headers()->all()['X-Name']);
+    }
+
+    public function testYouCanProvideACallbackAsTheDefaultValueOfTheUnlessCondition()
+    {
+        $request = new UserRequest();
+
+        $request->unless(
+            true,
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Sam');
+            },
+            function (UserRequest $request) {
+                $request->headers()->add('X-Name', 'Alex');
+            }
+        );
+
+        $this->assertArrayHasKey('X-Name', $request->headers()->all());
+        $this->assertEquals('Alex', $request->headers()->all()['X-Name']);
+    }
+
+    public function testItWillPassTheConditionValueAsTheSecondArgumentOfTheCallable()
+    {
+        $request = new UserRequest();
+
+        $testCase = $this;
+        $request->when(true, function (UserRequest $request, $value) use ($testCase) {
+            $testCase->assertInternalType('bool', $value);
+            $testCase->assertTrue($value);
+        });
+
+        $request->unless(false, function (UserRequest $request, $value) use ($testCase) {
+            $testCase->assertInternalType('bool', $value);
+            $testCase->assertFalse($value);
+        });
+    }
+
+    public function testItWillPassTheConditionValueAsTheSecondArgumentOfTheDefaultCallable()
+    {
+        $request = new UserRequest();
+
+        $testCase = $this;
+        $request->when(
+            false,
+            function (UserRequest $request, $value) {
+                // Do nothing
+            },
+            function (UserRequest $request, $value) use ($testCase) {
+                $testCase->assertInternalType('bool', $value);
+                $testCase->assertFalse($value);
+            }
+        );
+
+        $request->unless(
+            true,
+            function (UserRequest $request, $value) {
+                // Do nothing
+            },
+            function (UserRequest $request, $value) use ($testCase) {
+                $testCase->assertInternalType('bool', $value);
+                $testCase->assertTrue($value);
+            }
+        );
+    }
+}

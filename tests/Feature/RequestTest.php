@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Senders\GuzzleSender;
@@ -10,50 +11,56 @@ use Saloon\Tests\Fixtures\Requests\ErrorRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\HasConnectorUserRequest;
 
-test('a request can be made successfully', function () {
-    $connector = new TestConnector();
-    $response = $connector->send(new UserRequest);
+class RequestTest extends TestCase
+{
+    public function testARequestCanBeMadeSuccessfully()
+    {
+        $connector = new TestConnector();
+        $response = $connector->send(new UserRequest());
 
-    $data = $response->json();
+        $data = $response->json();
 
-    expect($response->getPendingRequest()->isAsynchronous())->toBeFalse();
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(200);
+        $this->assertFalse($response->getPendingRequest()->isAsynchronous());
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(200, $response->status());
 
-    expect($data)->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $data);
+    }
 
-test('a request can handle an exception properly', function () {
-    $connector = new TestConnector();
-    $response = $connector->send(new ErrorRequest);
+    public function testARequestCanHandleAnExceptionProperly()
+    {
+        $connector = new TestConnector();
+        $response = $connector->send(new ErrorRequest());
 
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(500);
-});
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(500, $response->status());
+    }
 
-test('a request with HasConnector can be sent individually', function () {
-    $request = new HasConnectorUserRequest();
+    public function testARequestWithHasConnectorCanBeSentIndividually()
+    {
+        $request = new HasConnectorUserRequest();
 
-    expect($request->connector())->toBeInstanceOf(TestConnector::class);
-    expect($request->sender())->toBeInstanceOf(GuzzleSender::class);
-    expect($request->createPendingRequest())->toBeInstanceOf(PendingRequest::class);
+        $this->assertInstanceOf(TestConnector::class, $request->connector());
+        $this->assertInstanceOf(GuzzleSender::class, $request->sender());
+        $this->assertInstanceOf(PendingRequest::class, $request->createPendingRequest());
 
-    $response = $request->send();
+        $response = $request->send();
 
-    $data = $response->json();
+        $data = $response->json();
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(200);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(200, $response->status());
 
-    expect($data)->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $data);
+    }
+}

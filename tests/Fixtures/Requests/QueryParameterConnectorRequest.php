@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,22 +13,29 @@ class QueryParameterConnectorRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = QueryParameterConnector::class;
+    protected $connector = QueryParameterConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    protected function defaultQuery(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultQuery()
     {
         return [
             'include' => 'user',

@@ -1,26 +1,28 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Responses;
 
+use Exception;
 use Saloon\Http\Response;
 
 class UserResponse extends Response
 {
     /**
-     * @return \Sammyjo20\Saloon\Tests\Fixtures\Responses\UserData
-     * @throws \JsonException
+     * @return UserData
+     *
+     * @throws Exception
      */
-    public function customCastMethod(): UserData
+    public function customCastMethod()
     {
         return new UserData($this->json('foo'));
     }
 
     /**
-     * @throws \JsonException
+     * @return string|null
+     *
+     * @throws Exception
      */
-    public function foo(): ?string
+    public function foo()
     {
         return $this->json('foo');
     }

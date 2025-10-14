@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Response;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -14,92 +15,100 @@ use Saloon\Tests\Fixtures\Responses\UserResponse;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\UserRequestWithCustomResponse;
 
-test('an asynchronous request can be made successfully', function () {
-    $promise = TestConnector::make()->sendAsync(new UserRequest);
+class AsyncRequestTest extends TestCase
+{
+    public function testAsynchronousRequestCanBeMadeSuccessfully()
+    {
+        $promise = TestConnector::make()->sendAsync(new UserRequest());
 
-    expect($promise)->toBeInstanceOf(PromiseInterface::class);
+        $this->assertInstanceOf(PromiseInterface::class, $promise);
 
-    $response = $promise->wait();
+        $response = $promise->wait();
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $this->assertInstanceOf(Response::class, $response);
 
-    $data = $response->json();
+        $data = $response->json();
 
-    expect($response->getPendingRequest()->isAsynchronous())->toBeTrue();
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(200);
+        $this->assertTrue($response->getPendingRequest()->isAsynchronous());
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(200, $response->status());
 
-    expect($data)->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $data);
+    }
 
-test('an asynchronous request can handle an exception properly', function () {
-    $promise = TestConnector::make()->sendAsync(new ErrorRequest);
+    public function testAsynchronousRequestCanHandleAnExceptionProperly()
+    {
+        $promise = TestConnector::make()->sendAsync(new ErrorRequest());
 
-    $this->expectException(RequestException::class);
+        $this->expectException(RequestException::class);
 
-    $promise->wait();
-});
+        $promise->wait();
+    }
 
-test('an asynchronous response will still be passed through response middleware', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-    ]);
+    public function testAsynchronousResponseWillStillBePassedThroughResponseMiddleware()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+        ]);
 
-    $request = new UserRequest();
+        $request = new UserRequest();
 
-    $passed = false;
+        $passed = false;
 
-    $request->middleware()->onResponse(function (Response $response) use (&$passed) {
-        $passed = true;
-    });
+        $request->middleware()->onResponse(function (Response $response) use (&$passed) {
+            $passed = true;
+        });
 
-    $connector = new TestConnector;
+        $connector = new TestConnector();
 
-    $promise = $connector->sendAsync($request, $mockClient);
-    $response = $promise->wait();
+        $promise = $connector->sendAsync($request, $mockClient);
+        $response = $promise->wait();
 
-    expect($passed)->toBeTrue();
-});
+        $this->assertTrue($passed);
+    }
 
-test('an asynchronous request will return a custom response', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['foo' => 'bar']),
-    ]);
+    public function testAsynchronousRequestWillReturnACustomResponse()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['foo' => 'bar']),
+        ]);
 
-    $connector = new TestConnector;
-    $request = new UserRequestWithCustomResponse();
+        $connector = new TestConnector();
+        $request = new UserRequestWithCustomResponse();
 
-    $promise = $connector->sendAsync($request, $mockClient);
+        $promise = $connector->sendAsync($request, $mockClient);
 
-    $response = $promise->wait();
+        $response = $promise->wait();
 
-    expect($response)->toBeInstanceOf(UserResponse::class);
-    expect($response)->customCastMethod()->toBeInstanceOf(UserData::class);
-    expect($response)->foo()->toBe('bar');
-});
+        $this->assertInstanceOf(UserResponse::class, $response);
+        $this->assertInstanceOf(UserData::class, $response->customCastMethod());
+        $this->assertEquals('bar', $response->foo());
+    }
 
-test('middleware is only executed when an asynchronous request is sent', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['foo' => 'bar']),
-    ]);
+    public function testMiddlewareIsOnlyExecutedWhenAnAsynchronousRequestIsSent()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['foo' => 'bar']),
+        ]);
 
-    $request = new UserRequest;
-    $request->withMockClient($mockClient);
-    $sent = false;
+        $request = new UserRequest();
+        $request->withMockClient($mockClient);
+        $sent = false;
 
-    $request->middleware()->onRequest(function () use (&$sent) {
-        $sent = true;
-    });
+        $request->middleware()->onRequest(function () use (&$sent) {
+            $sent = true;
+        });
 
-    $promise = TestConnector::make()->sendAsync($request);
+        $promise = TestConnector::make()->sendAsync($request);
 
-    expect($sent)->toBeFalse();
+        $this->assertFalse($sent);
 
-    $promise->wait();
+        $promise->wait();
 
-    expect($sent)->toBeTrue();
-});
+        $this->assertTrue($sent);
+    }
+}

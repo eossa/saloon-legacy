@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -12,9 +10,16 @@ class RequestSelectionConnector extends Connector
     use AcceptsJson;
 
     /**
-     * Define the base url of the api.
+     * @var string|null
      */
-    public function resolveBaseUrl(): string
+    public $apiKey;
+
+    /**
+     * Define the base url of the api.
+     *
+     * @return string
+     */
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
@@ -24,13 +29,16 @@ class RequestSelectionConnector extends Connector
      *
      * @return string[]
      */
-    public function defaultHeaders(): array
+    public function defaultHeaders()
     {
         return [];
     }
 
-    public function __construct(public ?string $apiKey = null)
+    /**
+     * @param string|null $apiKey
+     */
+    public function __construct($apiKey = null)
     {
-        //
+        $this->apiKey = $apiKey;
     }
 }

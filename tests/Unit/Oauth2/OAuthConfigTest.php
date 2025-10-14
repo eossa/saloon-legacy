@@ -1,67 +1,85 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Oauth2;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Helpers\OAuth2\OAuthConfig;
 use Saloon\Exceptions\OAuthConfigValidationException;
 
-test('all default properties are correct and all getters and setters work properly', function () {
-    $config = new OAuthConfig;
+class OAuthConfigTest extends TestCase
+{
+    public function testAllDefaultPropertiesAreCorrectAndAllGettersAndSettersWorkProperly()
+    {
+        $config = new OAuthConfig();
 
-    expect($config->getClientId())->toEqual('');
-    expect($config->getClientSecret())->toEqual('');
-    expect($config->getRedirectUri())->toEqual('');
-    expect($config->getAuthorizeEndpoint())->toEqual('authorize');
-    expect($config->getTokenEndpoint())->toEqual('token');
-    expect($config->getUserEndpoint())->toEqual('user');
-    expect($config->getDefaultScopes())->toEqual([]);
+        $this->assertEquals('', $config->getClientId());
+        $this->assertEquals('', $config->getClientSecret());
+        $this->assertEquals('', $config->getRedirectUri());
+        $this->assertEquals('authorize', $config->getAuthorizeEndpoint());
+        $this->assertEquals('token', $config->getTokenEndpoint());
+        $this->assertEquals('user', $config->getUserEndpoint());
+        $this->assertEquals(array(), $config->getDefaultScopes());
 
-    $clientId = 'client-id';
-    $clientSecret = 'client-secret';
-    $redirectUri = 'https://my-app.saloon.dev/auth/callback';
-    $authorizeEndpoint = 'auth/authorize';
-    $tokenEndpoint = 'auth/token';
-    $userEndpoint = 'auth/user';
-    $defaultScopes = ['profile'];
+        $clientId = 'client-id';
+        $clientSecret = 'client-secret';
+        $redirectUri = 'https://my-app.saloon.dev/auth/callback';
+        $authorizeEndpoint = 'auth/authorize';
+        $tokenEndpoint = 'auth/token';
+        $userEndpoint = 'auth/user';
+        $defaultScopes = array('profile');
 
-    expect($config->setClientId($clientId))->toEqual($config);
-    expect($config->setClientSecret($clientSecret))->toEqual($config);
-    expect($config->setRedirectUri($redirectUri))->toEqual($config);
-    expect($config->setAuthorizeEndpoint($authorizeEndpoint))->toEqual($config);
-    expect($config->setTokenEndpoint($tokenEndpoint))->toEqual($config);
-    expect($config->setUserEndpoint($userEndpoint))->toEqual($config);
-    expect($config->setDefaultScopes($defaultScopes))->toEqual($config);
+        $this->assertEquals($config, $config->setClientId($clientId));
+        $this->assertEquals($config, $config->setClientSecret($clientSecret));
+        $this->assertEquals($config, $config->setRedirectUri($redirectUri));
+        $this->assertEquals($config, $config->setAuthorizeEndpoint($authorizeEndpoint));
+        $this->assertEquals($config, $config->setTokenEndpoint($tokenEndpoint));
+        $this->assertEquals($config, $config->setUserEndpoint($userEndpoint));
+        $this->assertEquals($config, $config->setDefaultScopes($defaultScopes));
 
-    expect($config->getClientId())->toEqual($clientId);
-    expect($config->getClientSecret())->toEqual($clientSecret);
-    expect($config->getRedirectUri())->toEqual($redirectUri);
-    expect($config->getAuthorizeEndpoint())->toEqual($authorizeEndpoint);
-    expect($config->getTokenEndpoint())->toEqual($tokenEndpoint);
-    expect($config->getUserEndpoint())->toEqual($userEndpoint);
-    expect($config->getDefaultScopes())->toEqual($defaultScopes);
-});
+        $this->assertEquals($clientId, $config->getClientId());
+        $this->assertEquals($clientSecret, $config->getClientSecret());
+        $this->assertEquals($redirectUri, $config->getRedirectUri());
+        $this->assertEquals($authorizeEndpoint, $config->getAuthorizeEndpoint());
+        $this->assertEquals($tokenEndpoint, $config->getTokenEndpoint());
+        $this->assertEquals($userEndpoint, $config->getUserEndpoint());
+        $this->assertEquals($defaultScopes, $config->getDefaultScopes());
+    }
 
-test('make method creates an instance of OAuthConfig', function () {
-    expect(OAuthConfig::make())->toBeInstanceOf(OAuthConfig::class);
-});
+    public function testMakeMethodCreatesAnInstanceOfOAuthConfig()
+    {
+        $this->assertInstanceOf(OAuthConfig::class, OAuthConfig::make());
+    }
 
-test('it will throw an exception if you do not specify the client id', function () {
-    $config = new OAuthConfig;
-    $config->validate();
-})->throws(OAuthConfigValidationException::class, 'The Client ID is empty or has not been provided.');
+    public function testItWillThrowAnExceptionIfYouDoNotSpecifyTheClientId()
+    {
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client ID is empty or has not been provided.');
 
-test('it will throw an exception if you do not specify the client secret', function () {
-    $config = new OAuthConfig;
-    $config->setClientId('client-id');
+        $config = new OAuthConfig();
+        $config->validate();
+    }
 
-    $config->validate();
-})->throws(OAuthConfigValidationException::class, 'The Client Secret is empty or has not been provided.');
+    public function testItWillThrowAnExceptionIfYouDoNotSpecifyTheClientSecret()
+    {
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client Secret is empty or has not been provided.');
 
-test('it will throw an exception if you do not specify the redirect uri', function () {
-    $config = new OAuthConfig;
+        $config = new OAuthConfig();
+        $config->setClientId('client-id');
 
-    $config->setClientId('client-id')
-        ->setClientSecret('client-secret');
+        $config->validate();
+    }
 
-    $config->validate();
-})->throws(OAuthConfigValidationException::class, 'The Redirect URI is empty or has not been provided.');
+    public function testItWillThrowAnExceptionIfYouDoNotSpecifyTheRedirectUri()
+    {
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Redirect URI is empty or has not been provided.');
+
+        $config = new OAuthConfig();
+
+        $config->setClientId('client-id')
+            ->setClientSecret('client-secret');
+
+        $config->validate();
+    }
+}

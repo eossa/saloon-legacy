@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature\Body;
 
 use GuzzleHttp\Psr7\HttpFactory;
 use Saloon\Http\Faking\MockResponse;
@@ -8,35 +8,41 @@ use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Promise\FulfilledPromise;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\HasStringBodyRequest;
+use PHPUnit\Framework\TestCase;
 
-test('the default body is loaded', function () {
-    $request = new HasStringBodyRequest();
+class HasStringBodyTest extends TestCase
+{
+    public function testTheDefaultBodyIsLoaded()
+    {
+        $request = new HasStringBodyRequest();
 
-    expect($request->body()->all())->toEqual('name: Sam');
-});
+        $this->assertEquals('name: Sam', $request->body()->all());
+    }
 
-test('the guzzle sender properly sends it', function () {
-    $connector = new TestConnector;
-    $request = new HasStringBodyRequest;
+    public function testTheGuzzleSenderProperlySendsIt()
+    {
+        $connector = new TestConnector();
+        $request = new HasStringBodyRequest();
 
-    $request->headers()->add('Content-Type', 'application/custom');
+        $request->headers()->add('Content-Type', 'application/custom');
 
-    $asserted = false;
+        $asserted = false;
 
-    $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
-        return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
-            expect($guzzleRequest->getHeader('Content-Type'))->toEqual(['application/custom']);
-            expect((string)$guzzleRequest->getBody())->toEqual((string)$request->body());
+        $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
+            return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
+                $this->assertEquals(['application/custom'], $guzzleRequest->getHeader('Content-Type'));
+                $this->assertEquals((string)$request->body(), (string)$guzzleRequest->getBody());
 
-            $asserted = true;
+                $asserted = true;
 
-            $factory = new HttpFactory;
+                $factory = new HttpFactory();
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
 
-    $connector->send($request);
+        $connector->send($request);
 
-    expect($asserted)->toBeTrue();
-});
+        $this->assertTrue($asserted);
+    }
+}

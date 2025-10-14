@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -16,13 +14,17 @@ class HasMultipartBodyRequest extends Request implements HasBody
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
@@ -30,9 +32,9 @@ class HasMultipartBodyRequest extends Request implements HasBody
     /**
      * Default Body
      *
-     * @return string[]
+     * @return MultipartValue[]
      */
-    protected function defaultBody(): array
+    protected function defaultBody()
     {
         return [
             new MultipartValue('nickname', 'Sam', 'user.txt', ['X-Saloon' => 'Yee-haw!']),

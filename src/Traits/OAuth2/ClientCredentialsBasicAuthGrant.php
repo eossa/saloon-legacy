@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\OAuth2;
 
 use Saloon\Http\Request;
@@ -14,8 +12,12 @@ trait ClientCredentialsBasicAuthGrant
 
     /**
      * Resolve the access token request
+     *
+     * @param string $scopeSeparator
+     *
+     * @return Request
      */
-    protected function resolveAccessTokenRequest(OAuthConfig $oauthConfig, array $scopes = [], string $scopeSeparator = ' '): Request
+    protected function resolveAccessTokenRequest(OAuthConfig $oauthConfig, array $scopes = [], $scopeSeparator = ' ')
     {
         return new GetClientCredentialsTokenBasicAuthRequest($oauthConfig, $scopes, $scopeSeparator);
     }

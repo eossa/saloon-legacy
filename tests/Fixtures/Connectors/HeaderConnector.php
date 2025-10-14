@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -11,19 +9,28 @@ class HeaderConnector extends Connector
 {
     use AcceptsJson;
 
-    public function resolveBaseUrl(): string
+    /**
+     * @return string
+     */
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
-    public function defaultHeaders(): array
+    /**
+     * @return string[]
+     */
+    public function defaultHeaders()
     {
         return [
             'X-Connector-Header' => 'Sam',
         ];
     }
 
-    public function defaultConfig(): array
+    /**
+     * @return array
+     */
+    public function defaultConfig()
     {
         return [
             'http_errors' => false,

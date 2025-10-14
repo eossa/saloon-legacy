@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Saloon\Http\PendingRequest;
@@ -13,23 +11,32 @@ trait HasJsonBody
 
     /**
      * Body Repository
+     *
+     * @var JsonBodyRepository
      */
-    protected JsonBodyRepository $body;
+    protected $body;
 
     /**
      * Boot the plugin
+     *
+     * @return void
      */
-    public function bootHasJsonBody(PendingRequest $pendingRequest): void
+    public function bootHasJsonBody(PendingRequest $pendingRequest)
     {
         $pendingRequest->headers()->add('Content-Type', 'application/json');
     }
 
     /**
      * Retrieve the data repository
+     *
+     * @return JsonBodyRepository
      */
-    public function body(): JsonBodyRepository
+    public function body()
     {
-        return $this->body ??= new JsonBodyRepository($this->defaultBody());
+        if (isset($this->body)) {
+            return $this->body;
+        }
+        return $this->body = new JsonBodyRepository($this->defaultBody());
     }
 
     /**
@@ -37,7 +44,7 @@ trait HasJsonBody
      *
      * @return array<string, mixed>
      */
-    protected function defaultBody(): array
+    protected function defaultBody()
     {
         return [];
     }

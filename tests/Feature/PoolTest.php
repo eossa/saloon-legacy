@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Response;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Faking\MockClient;
@@ -15,126 +16,132 @@ use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Exceptions\Request\FatalRequestException;
 use Saloon\Tests\Fixtures\Connectors\InvalidConnectionConnector;
 
-test('you can create a pool on a connector', function () {
-    $connector = new TestConnector;
-    $successCount = 0;
-    $errorCount = 0;
+class PoolTest extends TestCase
+{
+    public function testYouCanCreateAPoolOnAConnector()
+    {
+        $connector = new TestConnector();
+        $successCount = 0;
+        $errorCount = 0;
 
-    $pool = $connector->pool([
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new ErrorRequest,
-    ]);
-
-    $pool->setConcurrency(6);
-
-    $pool->withResponseHandler(function (Response $response) use (&$successCount) {
-        expect($response)->toBeInstanceOf(Response::class);
-        expect($response->json())->toEqual([
-            'name' => 'Sammyjo20',
-            'actual_name' => 'Sam',
-            'twitter' => '@carre_sam',
+        $pool = $connector->pool([
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new ErrorRequest(),
         ]);
 
-        $successCount++;
-    });
+        $pool->setConcurrency(6);
 
-    $pool->withExceptionHandler(function (RequestException $exception) use (&$errorCount) {
-        $response = $exception->getResponse();
+        $pool->withResponseHandler(function (Response $response) use (&$successCount) {
+            $this->assertInstanceOf(Response::class, $response);
+            $this->assertEquals([
+                'name' => 'Sammyjo20',
+                'actual_name' => 'Sam',
+                'twitter' => '@carre_sam',
+            ], $response->json());
 
-        expect($response)->toBeInstanceOf(Response::class);
+            $successCount++;
+        });
 
-        $errorCount++;
-    });
+        $pool->withExceptionHandler(function (RequestException $exception) use (&$errorCount) {
+            $response = $exception->getResponse();
 
-    $promise = $pool->send();
+            $this->assertInstanceOf(Response::class, $response);
 
-    expect($promise)->toBeInstanceOf(PromiseInterface::class);
+            $errorCount++;
+        });
 
-    $promise->wait();
+        $promise = $pool->send();
 
-    expect($successCount)->toEqual(5);
-    expect($errorCount)->toEqual(1);
-});
+        $this->assertInstanceOf(PromiseInterface::class, $promise);
 
-test('if a pool has a request that cannot connect it will be caught in the handleException callback', function () {
-    $connector = new InvalidConnectionConnector;
-    $count = 0;
+        $promise->wait();
 
-    $pool = $connector->pool([
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-    ]);
+        $this->assertEquals(5, $successCount);
+        $this->assertEquals(1, $errorCount);
+    }
 
-    $pool->setConcurrency(5);
+    public function testIfAPoolHasARequestThatCannotConnectItWillBeCaughtInTheHandleExceptionCallback()
+    {
+        $connector = new InvalidConnectionConnector();
+        $count = 0;
 
-    $pool->withExceptionHandler(function (FatalRequestException $ex) use (&$count) {
-        expect($ex)->toBeInstanceOf(FatalRequestException::class);
-        expect($ex->getPrevious())->toBeInstanceOf(ConnectException::class);
-        expect($ex->getPendingRequest())->toBeInstanceOf(PendingRequest::class);
+        $pool = $connector->pool([
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+        ]);
 
-        $count++;
-    });
+        $pool->setConcurrency(5);
 
-    $promise = $pool->send();
+        $pool->withExceptionHandler(function (FatalRequestException $ex) use (&$count) {
+            $this->assertInstanceOf(FatalRequestException::class, $ex);
+            $this->assertInstanceOf(ConnectException::class, $ex->getPrevious());
+            $this->assertInstanceOf(PendingRequest::class, $ex->getPendingRequest());
 
-    $promise->wait();
+            $count++;
+        });
 
-    expect($count)->toEqual(5);
-});
+        $promise = $pool->send();
 
-test('you can use pool with a mock client added and it wont send real requests', function () {
-    $mockResponses = [
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-        MockResponse::make(['name' => 'Emily']),
-        MockResponse::make(['name' => 'Error'], 500),
-    ];
+        $promise->wait();
 
-    $mockClient = new MockClient($mockResponses);
+        $this->assertEquals(5, $count);
+    }
 
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $successCount = 0;
-    $errorCount = 0;
+    public function testYouCanUsePoolWithAMockClientAddedAndItWontSendRealRequests()
+    {
+        $mockResponses = [
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+            MockResponse::make(['name' => 'Emily']),
+            MockResponse::make(['name' => 'Error'], 500),
+        ];
 
-    $pool = $connector->pool([
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-        new ErrorRequest,
-    ]);
+        $mockClient = new MockClient($mockResponses);
 
-    $pool->setConcurrency(6);
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $successCount = 0;
+        $errorCount = 0;
 
-    $pool->withResponseHandler(function (Response $response) use (&$successCount, $mockResponses) {
-        expect($response)->toBeInstanceOf(Response::class);
-        expect($response->json())->toEqual($mockResponses[$successCount]->body()->all());
+        $pool = $connector->pool([
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+            new ErrorRequest(),
+        ]);
 
-        $successCount++;
-    });
+        $pool->setConcurrency(6);
 
-    $pool->withExceptionHandler(function (RequestException $exception) use (&$errorCount) {
-        $response = $exception->getResponse();
+        $pool->withResponseHandler(function (Response $response) use (&$successCount, $mockResponses) {
+            $this->assertInstanceOf(Response::class, $response);
+            $this->assertEquals($mockResponses[$successCount]->body()->all(), $response->json());
 
-        expect($response)->toBeInstanceOf(Response::class);
-        expect($response->json())->toEqual(['name' => 'Error']);
+            $successCount++;
+        });
 
-        $errorCount++;
-    });
+        $pool->withExceptionHandler(function (RequestException $exception) use (&$errorCount) {
+            $response = $exception->getResponse();
 
-    $promise = $pool->send();
+            $this->assertInstanceOf(Response::class, $response);
+            $this->assertEquals(['name' => 'Error'], $response->json());
 
-    $promise->wait();
+            $errorCount++;
+        });
 
-    expect($successCount)->toEqual(4);
-    expect($errorCount)->toEqual(1);
-});
+        $promise = $pool->send();
+
+        $promise->wait();
+
+        $this->assertEquals(4, $successCount);
+        $this->assertEquals(1, $errorCount);
+    }
+}

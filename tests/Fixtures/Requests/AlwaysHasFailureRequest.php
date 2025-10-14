@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,20 +13,24 @@ class AlwaysHasFailureRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
     /**
      * Determines if there is always a failure
+     *
+     * @return bool
      */
-    public function shouldThrowRequestException(Response $response): bool
+    public function shouldThrowRequestException(Response $response)
     {
         return true;
     }

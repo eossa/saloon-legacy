@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -12,33 +10,43 @@ class CustomEndpointRequest extends Request
 {
     /**
      * Connector
+     *
+     * @var string
      */
-    protected string $connector = CustomBaseUrlConnector::class;
+    protected $connector = CustomBaseUrlConnector::class;
 
     /**
      * Endpoint
+     *
+     * @var string
      */
-    protected string $endpoint = '';
+    protected $endpoint = '';
 
     /**
      * Method
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->endpoint;
     }
 
     /**
      * Set an endpoint
+     *
+     * @param string $endpoint
+     *
+     * @return CustomEndpointRequest
      */
-    public function setEndpoint(string $endpoint): CustomEndpointRequest
+    public function setEndpoint($endpoint)
     {
         $this->endpoint = $endpoint;
 

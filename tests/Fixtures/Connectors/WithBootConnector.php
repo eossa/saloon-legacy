@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Request;
@@ -14,13 +12,20 @@ class WithBootConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
-    public function boot(Request $request): void
+    /**
+     * @param Request $request
+     *
+     * @return void
+     */
+    public function boot(Request $request)
     {
         $this->addHeader('X-Connector-Boot-Header', 'Howdy!');
         $this->addHeader('X-Connector-Request-Class', get_class($request));

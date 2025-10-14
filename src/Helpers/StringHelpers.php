@@ -1,8 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
+
+use Exception;
+use Traversable;
 
 /**
  * @internal
@@ -12,15 +13,18 @@ final class StringHelpers
     /**
      * Determine if a given string matches a given pattern.
      *
-     * @param string|iterable<string> $pattern
+     * @param string|iterable<string> $patterns
+     * @param string $value
+     *
+     * @return bool
      */
-    public static function matchesPattern(string|iterable $pattern, string $value): bool
+    public static function matchesPattern($patterns, $value)
     {
-        if (! is_iterable($pattern)) {
-            $pattern = [$pattern];
+        if (! (is_array($patterns) || $patterns instanceof Traversable)) {
+            $patterns = [$patterns];
         }
 
-        foreach ($pattern as $pattern) {
+        foreach ($patterns as $pattern) {
             $pattern = (string)$pattern;
 
             // If the given value is an exact match we can of course return true right
@@ -47,8 +51,13 @@ final class StringHelpers
 
     /**
      * Begin a string with a single instance of a given value.
+     *
+     * @param string $value
+     * @param string $prefix
+     *
+     * @return string
      */
-    public static function start(string $value, string $prefix): string
+    public static function start($value, $prefix)
     {
         $quoted = preg_quote($prefix, '/');
 
@@ -59,9 +68,12 @@ final class StringHelpers
      * Generate a more truly "random" alpha-numeric string.
      *
      * @param int<1, max> $length
-     * @throws \Exception
+     *
+     * @return string
+     *
+     * @throws Exception
      */
-    public static function random(int $length = 16): string
+    public static function random($length = 16)
     {
         $string = '';
 

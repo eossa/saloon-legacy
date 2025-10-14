@@ -1,7 +1,9 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
+use Generator;
+use Traversable;
 use Saloon\Http\Response;
 use Saloon\Http\Connector;
 use Saloon\Http\Faking\MockClient;
@@ -9,338 +11,362 @@ use Saloon\Http\Faking\MockResponse;
 use Saloon\Exceptions\InvalidPoolItemException;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
+use PHPUnit\Framework\TestCase;
 
-it('accepts an array for requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = [
-        new UserRequest,
-        new UserRequest,
-        new UserRequest,
-    ];
-
-    $pool = $connector->pool($requests);
-
-    $pool->setConcurrency(5);
-
-    $pool->withResponseHandler(function (Response $response, int $index) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$index]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-});
-
-it('accepts an array for aliased requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = [
-        'a' => new UserRequest,
-        'b' => new UserRequest,
-        'c' => new UserRequest,
-    ];
-
-    $pool = $connector->pool($requests);
-
-    $pool->setConcurrency(5);
-
-    $pool->withResponseHandler(function (Response $response, string $name) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$name]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-    expect($requests)->toHaveKeys(['a', 'b', 'c']);
-});
-
-it('accepts a generator for requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect([]);
-
-    $generatorCallback = function () use ($requests): Generator {
-        for ($i = 0; $i < 3; $i++) {
-            $request = new UserRequest;
-            $requests->put($i, $request);
-
-            yield $i => $request;
-        }
-    };
-
-    expect($generatorCallback)->toBeCallable();
-    expect($generatorCallback())->toBeInstanceOf(Generator::class);
-
-    $pool = $connector->pool($generatorCallback());
-    $pool->setConcurrency(5);
-    $pool->withResponseHandler(function (Response $response, int $index) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$index]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-});
-
-it('accepts a generator for aliased requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect();
-
-    $generatorCallback = function () use ($requests): Generator {
-        for ($name = 'a'; $name !== 'd'; $name++) {
-            $request = new UserRequest;
-            $requests->put($name, $request);
-
-            yield $name => $request;
-        }
-    };
-
-    expect($generatorCallback)->toBeCallable();
-    expect($generatorCallback())->toBeInstanceOf(Generator::class);
-
-    $pool = $connector->pool($generatorCallback());
-    $pool->setConcurrency(5);
-    $pool->withResponseHandler(function (Response $response, string $name) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$name]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-    expect($requests)->toHaveKeys(['a', 'b', 'c']);
-});
-
-it('accepts a callback that returns an array for requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect();
-
-    $arrayCallback = function () use (&$requests) {
-        $requests = $requests->merge([
-            new UserRequest,
-            new UserRequest,
-            new UserRequest,
+class PoolTest extends TestCase
+{
+    public function testAcceptsAnArrayForRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
         ]);
 
-        return $requests->all();
-    };
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
 
-    expect($arrayCallback)->toBeCallable();
-    expect($requests->all())->toBeArray();
+        $requests = [
+            new UserRequest(),
+            new UserRequest(),
+            new UserRequest(),
+        ];
 
-    $pool = $connector->pool($arrayCallback);
+        $pool = $connector->pool($requests);
 
-    $pool->setConcurrency(5);
+        $pool->setConcurrency(5);
 
-    $pool->withResponseHandler(function (Response $response, int $index) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$index]);
+        $pool->withResponseHandler(function (Response $response, $index) use ($requests, &$count) {
+            $this->assertSame($requests[$index], $response->getRequest());
 
-        $count++;
-    });
+            $count++;
+        });
 
-    $pool->send()->wait();
+        $pool->send()->wait();
 
-    expect($count)->toBe(3);
-});
-
-it('accepts a callback that returns an array for aliased requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect();
-
-    $arrayCallback = function (Connector $callbackConnector) use (&$requests, $connector) {
-        expect($callbackConnector)->toEqual($connector);
-
-        $requests = $requests->merge([
-            'a' => new UserRequest,
-            'b' => new UserRequest,
-            'c' => new UserRequest,
-        ]);
-
-        return $requests->all();
-    };
-
-    expect($arrayCallback)->toBeCallable();
-    expect($requests->all())->toBeArray();
-
-    $pool = $connector->pool($arrayCallback);
-    $pool->setConcurrency(5);
-    $pool->withResponseHandler(function (Response $response, string $name) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$name]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-    expect($requests->all())->toHaveKeys(['a', 'b', 'c']);
-});
-
-it('accepts a callback that returns a generator for requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect();
-
-    $generatorCallback = function () use ($requests): Generator {
-        for ($i = 0; $i < 3; $i++) {
-            $request = new UserRequest;
-            $requests->put($i, $request);
-
-            yield $i => $request;
-        }
-    };
-
-    expect($generatorCallback)->toBeCallable();
-    expect($generatorCallback())->toBeInstanceOf(Generator::class);
-
-    $pool = $connector->pool($generatorCallback);
-    $pool->setConcurrency(5);
-    $pool->withResponseHandler(function (Response $response, int $index) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$index]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-});
-
-it('accepts a callback that returns a generator for aliased requests', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['name' => 'Sam']),
-        MockResponse::make(['name' => 'Charlotte']),
-        MockResponse::make(['name' => 'Mantas']),
-    ]);
-
-    $connector = new TestConnector;
-    $connector->withMockClient($mockClient);
-    $count = 0;
-
-    $requests = collect();
-
-    $generatorCallback = function () use ($requests): Generator {
-        for ($name = 'a'; $name !== 'd'; $name++) {
-            $request = new UserRequest;
-            $requests->put($name, $request);
-
-            yield $name => $request;
-        }
-    };
-
-    expect($generatorCallback)->toBeCallable();
-    expect($generatorCallback())->toBeInstanceOf(Generator::class);
-
-    $pool = $connector->pool($generatorCallback);
-    $pool->setConcurrency(5);
-    $pool->withResponseHandler(function (Response $response, string $name) use ($requests, &$count) {
-        expect($response->getRequest())->toBe($requests[$name]);
-
-        $count++;
-    });
-
-    $pool->send()->wait();
-
-    expect($count)->toBe(3);
-    expect($requests->all())->toHaveKeys(['a', 'b', 'c']);
-});
-
-test('throws an exception if an invalid item is passed into the iterator', function () {
-    $connector = new TestConnector;
-
-    $pool = $connector->pool([
-        new UserRequest,
-        new UserRequest,
-        new TestConnector,
-    ]);
-
-    expect(fn () => $pool->send()->wait())->toThrow(InvalidPoolItemException::class);
-});
-
-test('you can get the requests provided into the pool', function () {
-    $connector = new TestConnector;
-
-    $requests = [
-        new UserRequest,
-        new UserRequest,
-        new TestConnector,
-    ];
-
-    $pool = $connector->pool($requests);
-    $iterable = $pool->getRequests();
-
-    expect($iterable)->toBeIterable();
-
-    foreach ($iterable as $index => $request) {
-        expect($request)->toEqual($requests[$index]);
+        $this->assertEquals(3, $count);
     }
 
-    expect($index)->toEqual(2);
-});
+    public function testAcceptsAnArrayForAliasedRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [
+            'a' => new UserRequest(),
+            'b' => new UserRequest(),
+            'c' => new UserRequest(),
+        ];
+
+        $pool = $connector->pool($requests);
+
+        $pool->setConcurrency(5);
+
+        $pool->withResponseHandler(function (Response $response, $name) use ($requests, &$count) {
+            $this->assertSame($requests[$name], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+        $this->assertArrayHasKey('a', $requests);
+        $this->assertArrayHasKey('b', $requests);
+        $this->assertArrayHasKey('c', $requests);
+    }
+
+    public function testAcceptsAGeneratorForRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $generatorCallback = function () use (&$requests) {
+            for ($i = 0; $i < 3; $i++) {
+                $request = new UserRequest();
+                $requests[$i] = $request;
+
+                yield $i => $request;
+            }
+        };
+
+        $this->assertTrue(is_callable($generatorCallback));
+        $this->assertInstanceOf(Generator::class, $generatorCallback());
+
+        $pool = $connector->pool($generatorCallback());
+        $pool->setConcurrency(5);
+        $pool->withResponseHandler(function (Response $response, $index) use (&$requests, &$count) {
+            $this->assertSame($requests[$index], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+    }
+
+    public function testAcceptsAGeneratorForAliasedRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $generatorCallback = function () use (&$requests) {
+            for ($name = 'a'; $name !== 'd'; $name++) {
+                $request = new UserRequest();
+                $requests[$name] = $request;
+
+                yield $name => $request;
+            }
+        };
+
+        $this->assertTrue(is_callable($generatorCallback));
+        $this->assertInstanceOf(Generator::class, $generatorCallback());
+
+        $pool = $connector->pool($generatorCallback());
+        $pool->setConcurrency(5);
+        $pool->withResponseHandler(function (Response $response, $name) use (&$requests, &$count) {
+            $this->assertSame($requests[$name], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+        $this->assertArrayHasKey('a', $requests);
+        $this->assertArrayHasKey('b', $requests);
+        $this->assertArrayHasKey('c', $requests);
+    }
+
+    public function testAcceptsACallbackThatReturnsAnArrayForRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $arrayCallback = function () use (&$requests) {
+            $requests = array_merge($requests, [
+                new UserRequest(),
+                new UserRequest(),
+                new UserRequest(),
+            ]);
+
+            return $requests;
+        };
+
+        $this->assertTrue(is_callable($arrayCallback));
+        $this->assertTrue(is_array($requests));
+
+        $pool = $connector->pool($arrayCallback);
+
+        $pool->setConcurrency(5);
+
+        $pool->withResponseHandler(function (Response $response, $index) use (&$requests, &$count) {
+            $this->assertSame($requests[$index], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+    }
+
+    public function testAcceptsACallbackThatReturnsAnArrayForAliasedRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $arrayCallback = function (Connector $callbackConnector) use (&$requests, $connector) {
+            $this->assertEquals($connector, $callbackConnector);
+
+            $requests = array_merge($requests, [
+                'a' => new UserRequest(),
+                'b' => new UserRequest(),
+                'c' => new UserRequest(),
+            ]);
+
+            return $requests;
+        };
+
+        $this->assertTrue(is_callable($arrayCallback));
+        $this->assertTrue(is_array($requests));
+
+        $pool = $connector->pool($arrayCallback);
+        $pool->setConcurrency(5);
+        $pool->withResponseHandler(function (Response $response, $name) use (&$requests, &$count) {
+            $this->assertSame($requests[$name], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+        $this->assertArrayHasKey('a', $requests);
+        $this->assertArrayHasKey('b', $requests);
+        $this->assertArrayHasKey('c', $requests);
+    }
+
+    public function testAcceptsACallbackThatReturnsAGeneratorForRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $generatorCallback = function () use (&$requests) {
+            for ($i = 0; $i < 3; $i++) {
+                $request = new UserRequest();
+                $requests[$i] = $request;
+
+                yield $i => $request;
+            }
+        };
+
+        $this->assertTrue(is_callable($generatorCallback));
+        $this->assertInstanceOf(Generator::class, $generatorCallback());
+
+        $pool = $connector->pool($generatorCallback);
+        $pool->setConcurrency(5);
+        $pool->withResponseHandler(function (Response $response, $index) use (&$requests, &$count) {
+            $this->assertSame($requests[$index], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+    }
+
+    public function testAcceptsACallbackThatReturnsAGeneratorForAliasedRequests()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['name' => 'Sam']),
+            MockResponse::make(['name' => 'Charlotte']),
+            MockResponse::make(['name' => 'Mantas']),
+        ]);
+
+        $connector = new TestConnector();
+        $connector->withMockClient($mockClient);
+        $count = 0;
+
+        $requests = [];
+
+        $generatorCallback = function () use (&$requests) {
+            for ($name = 'a'; $name !== 'd'; $name++) {
+                $request = new UserRequest();
+                $requests[$name] = $request;
+
+                yield $name => $request;
+            }
+        };
+
+        $this->assertTrue(is_callable($generatorCallback));
+        $this->assertInstanceOf(Generator::class, $generatorCallback());
+
+        $pool = $connector->pool($generatorCallback);
+        $pool->setConcurrency(5);
+        $pool->withResponseHandler(function (Response $response, $name) use (&$requests, &$count) {
+            $this->assertSame($requests[$name], $response->getRequest());
+
+            $count++;
+        });
+
+        $pool->send()->wait();
+
+        $this->assertEquals(3, $count);
+        $this->assertArrayHasKey('a', $requests);
+        $this->assertArrayHasKey('b', $requests);
+        $this->assertArrayHasKey('c', $requests);
+    }
+
+    public function testThrowsAnExceptionIfAnInvalidItemIsPassedIntoTheIterator()
+    {
+        $connector = new TestConnector();
+
+        $pool = $connector->pool([
+            new UserRequest(),
+            new UserRequest(),
+            new TestConnector(),
+        ]);
+
+        $this->expectException(InvalidPoolItemException::class);
+        $pool->send()->wait();
+    }
+
+    public function testYouCanGetTheRequestsProvidedIntoThePool()
+    {
+        $connector = new TestConnector();
+
+        $requests = [
+            new UserRequest(),
+            new UserRequest(),
+            new TestConnector(),
+        ];
+
+        $pool = $connector->pool($requests);
+        $iterable = $pool->getRequests();
+
+        $this->assertTrue(is_array($iterable) || $iterable instanceof Traversable);
+
+        $index = null;
+        foreach ($iterable as $index => $request) {
+            $this->assertEquals($requests[$index], $request);
+        }
+
+        $this->assertEquals(2, $index);
+    }
+}

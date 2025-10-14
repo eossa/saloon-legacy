@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits;
 
 use Saloon\Http\PendingRequest;
@@ -10,8 +8,10 @@ trait Bootable
 {
     /**
      * Handle the boot lifecycle hook
+     *
+     * @return void
      */
-    public function boot(PendingRequest $pendingRequest): void
+    public function boot(PendingRequest $pendingRequest)
     {
         //
     }

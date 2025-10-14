@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Data;
 
+use Exception;
 use Saloon\Http\Response;
 use Saloon\Traits\Responses\HasResponse;
 use Saloon\Contracts\DataObjects\WithResponse;
@@ -12,15 +11,42 @@ class UserWithResponse implements WithResponse
 {
     use HasResponse;
 
+    /**
+     * @var string
+     */
+    public $name;
+
+    /**
+     * @var string
+     */
+    public $actualName;
+
+    /**
+     * @var string
+     */
+    public $twitter;
+
+    /**
+     * @param string $name
+     * @param string $actualName
+     * @param string $twitter
+     */
     public function __construct(
-        public string $name,
-        public string $actualName,
-        public string $twitter,
+        $name,
+        $actualName,
+        $twitter
     ) {
-        //
+        $this->name = $name;
+        $this->actualName = $actualName;
+        $this->twitter = $twitter;
     }
 
-    public static function fromResponse(Response $response): static
+    /**
+     * @return static
+     *
+     * @throws Exception
+     */
+    public static function fromResponse(Response $response)
     {
         $data = $response->json();
 

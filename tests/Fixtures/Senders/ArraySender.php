@@ -1,41 +1,47 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Senders;
 
 use Saloon\Contracts\Sender;
+use Saloon\Exceptions\InvalidResponseClassException;
 use Saloon\Http\PendingRequest;
 use GuzzleHttp\Psr7\HttpFactory;
 use Saloon\Data\FactoryCollection;
 use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7\Response as GuzzleResponse;
+use Saloon\Http\Response;
 use Saloon\Http\Senders\Factories\GuzzleMultipartBodyFactory;
 
 class ArraySender implements Sender
 {
     /**
      * Get the factory collection
+     *
+     * @return FactoryCollection
      */
-    public function getFactoryCollection(): FactoryCollection
+    public function getFactoryCollection()
     {
-        $factory = new HttpFactory;
+        $factory = new HttpFactory();
 
         return new FactoryCollection(
-            requestFactory: $factory,
-            uriFactory: $factory,
-            streamFactory: $factory,
-            responseFactory: $factory,
-            multipartBodyFactory: new GuzzleMultipartBodyFactory,
+            $factory,
+            $factory,
+            $factory,
+            $factory,
+            new GuzzleMultipartBodyFactory()
         );
     }
 
     /**
      * Send the request synchronously
+     *
+     * @return Response
+     *
+     * @throws InvalidResponseClassException
      */
-    public function send(PendingRequest $pendingRequest): \Saloon\Http\Response
+    public function send(PendingRequest $pendingRequest)
     {
-        /** @var class-string<\Saloon\Http\Response> $responseClass */
+        /** @var class-string<Response> $responseClass */
         $responseClass = $pendingRequest->getResponseClass();
 
         return $responseClass::fromPsrResponse(new GuzzleResponse(200, ['X-Fake' => true], 'Default'), $pendingRequest, $pendingRequest->createPsrRequest());
@@ -43,8 +49,12 @@ class ArraySender implements Sender
 
     /**
      * Send the request asynchronously
+     *
+     * @param PendingRequest $pendingRequest
+     *
+     * @return PromiseInterface
      */
-    public function sendAsync(PendingRequest $pendingRequest): PromiseInterface
+    public function sendAsync(PendingRequest $pendingRequest)
     {
         //
     }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,43 +13,59 @@ class DefaultPropertiesRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
+     *
+     * @var string
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    protected function defaultHeaders(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultHeaders()
     {
         return [
             'X-Favourite-Artist' => 'Luke Combs',
         ];
     }
 
-    protected function defaultQuery(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultQuery()
     {
         return [
             'format' => 'json',
         ];
     }
 
-    protected function defaultData(): mixed
+    /**
+     * @return mixed
+     */
+    protected function defaultData()
     {
         return [
             'song' => 'Call Me',
         ];
     }
 
-    protected function defaultConfig(): array
+    /**
+     * @return true[]
+     */
+    protected function defaultConfig()
     {
         return [
             'debug' => true,

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 use Saloon\Traits\Request\HasConnector;
@@ -13,8 +11,10 @@ abstract class SoloRequest extends Request
 
     /**
      * Create a new connector instance.
+     *
+     * @return Connector
      */
-    protected function resolveConnector(): Connector
+    protected function resolveConnector()
     {
         return new NullConnector;
     }

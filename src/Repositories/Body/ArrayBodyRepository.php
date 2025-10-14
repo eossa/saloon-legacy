@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Repositories\Body;
 
 use LogicException;
@@ -21,7 +19,7 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      *
      * @var array<array-key, mixed>
      */
-    protected array $data = [];
+    protected $data = [];
 
     /**
      * Constructor
@@ -37,9 +35,10 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      * Set a value inside the repository
      *
      * @param array<array-key, mixed> $value
+     *
      * @return $this
      */
-    public function set(mixed $value): static
+    public function set($value)
     {
         if (! is_array($value)) {
             throw new InvalidArgumentException('The value must be an array');
@@ -54,9 +53,10 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      * Merge another array into the repository
      *
      * @param array<array-key, mixed> ...$arrays
+     *
      * @return $this
      */
-    public function merge(array ...$arrays): static
+    public function merge(array ...$arrays)
     {
         $this->data = array_merge($this->data, ...$arrays);
 
@@ -67,9 +67,11 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      * Add an element to the repository.
      *
      * @param array-key|null $key
+     * @param mixed $value
+     *
      * @return $this
      */
-    public function add(string|int|null $key = null, mixed $value = null): static
+    public function add($key = null, $value = null)
     {
         isset($key)
             ? $this->data[$key] = $value
@@ -83,7 +85,7 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      *
      * @return array<mixed, mixed>
      */
-    public function all(): array
+    public function all()
     {
         return $this->data;
     }
@@ -94,24 +96,28 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
      * Alias of `all()`.
      *
      * @param array-key|null $key
+     * @param mixed $default
+     *
      * @return ($key is null ? array<array-key, mixed> : mixed)
      */
-    public function get(string|int|null $key = null, mixed $default = null): mixed
+    public function get($key = null, $default = null)
     {
+        $all = $this->all();
         if (is_null($key)) {
-            return $this->all();
+            return $all;
         }
 
-        return $this->all()[$key] ?? $default;
+        return isset($all[$key]) ? $all[$key] : $default;
     }
 
     /**
      * Remove an item from the repository.
      *
      * @param array-key $key
+     *
      * @return $this
      */
-    public function remove(string|int $key): static
+    public function remove($key)
     {
         unset($this->data[$key]);
 
@@ -121,10 +127,11 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
     /**
      * Determine if the repository is empty
      *
+     * @return bool
      *
      * @phpstan-assert-if-false non-empty-array $this->data
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return empty($this->data);
     }
@@ -132,18 +139,21 @@ class ArrayBodyRepository implements BodyRepository, MergeableBody
     /**
      * Determine if the repository is not empty
      *
+     * @return bool
      *
      * @phpstan-assert-if-true non-empty-array $this->data
      */
-    public function isNotEmpty(): bool
+    public function isNotEmpty()
     {
         return ! $this->isEmpty();
     }
 
     /**
      * Convert the body repository into a stream
+     *
+     * @return StreamInterface
      */
-    public function toStream(StreamFactoryInterface $streamFactory): StreamInterface
+    public function toStream(StreamFactoryInterface $streamFactory)
     {
         throw new LogicException('Unable to create a stream directly from an array body repository.');
     }

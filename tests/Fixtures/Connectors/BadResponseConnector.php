@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Response;
@@ -14,17 +12,21 @@ class BadResponseConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
     /**
      * Check if we should throw an exception
+     *
+     * @return bool
      */
-    public function shouldThrowRequestException(Response $response): bool
+    public function shouldThrowRequestException(Response $response)
     {
-        return str_contains($response->body(), 'Error:');
+        return strpos($response->body(), 'Error:') !== false;
     }
 }

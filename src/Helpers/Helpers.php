@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 use Closure;
 use ReflectionClass;
+use ReflectionException;
 use Saloon\Http\Request;
 use Saloon\Http\Connector;
 use Saloon\Http\PendingRequest;
@@ -21,7 +20,7 @@ final class Helpers
      * @param object|class-string $class
      * @return array<class-string, class-string>
      */
-    public static function classUsesRecursive(object|string $class): array
+    public static function classUsesRecursive($class)
     {
         if (is_object($class)) {
             $class = get_class($class);
@@ -42,7 +41,7 @@ final class Helpers
      * @param class-string $trait
      * @return array<class-string, class-string>
      */
-    public static function traitUsesRecursive(string $trait): array
+    public static function traitUsesRecursive($trait)
     {
         /** @var array<class-string, class-string> $traits */
         $traits = class_uses($trait) ?: [];
@@ -56,8 +55,13 @@ final class Helpers
 
     /**
      * Return the default value of the given value.
+     *
+     * @param mixed $value
+     * @param mixed $args
+     *
+     * @return mixed
      */
-    public static function value(mixed $value, mixed ...$args): mixed
+    public static function value($value, ...$args)
     {
         return $value instanceof Closure ? $value(...$args) : $value;
     }
@@ -66,8 +70,11 @@ final class Helpers
      * Check if a class is a subclass of another.
      *
      * @param class-string $class
+     * @param class-string $subclass
+     *
+     * @return bool
      */
-    public static function isSubclassOf(string $class, string $subclass): bool
+    public static function isSubclassOf($class, $subclass)
     {
         if ($class === $subclass) {
             return true;
@@ -79,10 +86,14 @@ final class Helpers
     /**
      * Boot a plugin
      *
+     * @param Connector|Request $resource
      * @param class-string $trait
-     * @throws \ReflectionException
+     *
+     * @return void
+     *
+     * @throws ReflectionException
      */
-    public static function bootPlugin(PendingRequest $pendingRequest, Connector|Request $resource, string $trait): void
+    public static function bootPlugin(PendingRequest $pendingRequest, $resource, $trait)
     {
         $traitReflection = new ReflectionClass($trait);
 

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 use ArrayAccess;
@@ -16,9 +14,13 @@ final class ArrayHelpers
     /**
      * Determine whether the given value is array accessible.
      *
+     * @param mixed $value
+     *
+     * @return bool
+     *
      * @phpstan-assert-if-true array|ArrayAccess $value
      */
-    private static function accessible(mixed $value): bool
+    private static function accessible($value)
     {
         return is_array($value) || $value instanceof ArrayAccess;
     }
@@ -28,8 +30,10 @@ final class ArrayHelpers
      *
      * @param array<array-key, mixed>|ArrayAccess<array-key, mixed> $array
      * @param array-key|float $key
+     *
+     * @return bool
      */
-    private static function exists(array|ArrayAccess $array, string|int|float $key): bool
+    private static function exists($array, $key)
     {
         if (is_float($key)) {
             $key = (string)$key;
@@ -45,9 +49,10 @@ final class ArrayHelpers
      *
      * @param array<array-key, mixed> $array
      * @param array-key|null $key
+     * @param mixed $default
      * @return ($key is null ? array<array-key, mixed> : mixed)
      */
-    public static function get(array $array, string|int|null $key, mixed $default = null): mixed
+    public static function get(array $array, $key, $default = null)
     {
         if (! static::accessible($array)) {
             return Helpers::value($default);
@@ -61,8 +66,8 @@ final class ArrayHelpers
             return $array[$key];
         }
 
-        if (! is_string($key) || ! str_contains($key, '.')) {
-            return $array[$key] ?? Helpers::value($default);
+        if (! is_string($key) || ! strpos($key, '.') !== false) {
+            return isset($array[$key]) ? $array[$key] : Helpers::value($default);
         }
 
         foreach (explode('.', $key) as $segment) {

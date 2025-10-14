@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers\OAuth2;
 
 use Closure;
@@ -18,52 +16,66 @@ class OAuthConfig
 
     /**
      * The Client ID
+     *
+     * @var string
      */
-    protected string $clientId = '';
+    protected $clientId = '';
 
     /**
      * The Client Secret
+     *
+     * @var string
      */
-    protected string $clientSecret = '';
+    protected $clientSecret = '';
 
     /**
      * The Redirect URI
+     *
+     * @var string
      */
-    protected string $redirectUri = '';
+    protected $redirectUri = '';
 
     /**
      * The endpoint used for the authorization URL.
+     *
+     * @var string
      */
-    protected string $authorizeEndpoint = 'authorize';
+    protected $authorizeEndpoint = 'authorize';
 
     /**
      * The endpoint used to create and refresh tokens.
+     *
+     * @var string
      */
-    protected string $tokenEndpoint = 'token';
+    protected $tokenEndpoint = 'token';
 
     /**
      * The endpoint used to retrieve user information.
+     *
+     * @var string
      */
-    protected string $userEndpoint = 'user';
+    protected $userEndpoint = 'user';
 
     /**
      * Callable that modifies the OAuth requests
      *
-     * @var \Closure(\Saloon\Http\Request): (void)|null
+     * @var Closure(Request): (void)|null
      */
-    protected ?Closure $requestModifier = null;
+    protected $requestModifier = null;
 
     /**
      * The default scopes that will be applied to every authorization URL.
      *
      * @var array<string>
      */
-    protected array $defaultScopes = [];
+    protected $defaultScopes = [];
 
     /**
      * Get the Client ID
+     *
+     * @return string
      */
-    public function getClientId(): string
+    public function getClientId()
     {
         return $this->clientId;
     }
@@ -71,9 +83,11 @@ class OAuthConfig
     /**
      * Set the Client ID
      *
+     * @param string $clientId
+     *
      * @return $this
      */
-    public function setClientId(string $clientId): static
+    public function setClientId($clientId)
     {
         $this->clientId = $clientId;
 
@@ -82,8 +96,10 @@ class OAuthConfig
 
     /**
      * Get the Client Secret
+     *
+     * @return string
      */
-    public function getClientSecret(): string
+    public function getClientSecret()
     {
         return $this->clientSecret;
     }
@@ -91,9 +107,11 @@ class OAuthConfig
     /**
      * Set the Client Secret
      *
+     * @param string $clientSecret
+     *
      * @return $this
      */
-    public function setClientSecret(string $clientSecret): static
+    public function setClientSecret($clientSecret)
     {
         $this->clientSecret = $clientSecret;
 
@@ -102,8 +120,10 @@ class OAuthConfig
 
     /**
      * Get the Redirect URI
+     *
+     * @return string
      */
-    public function getRedirectUri(): string
+    public function getRedirectUri()
     {
         return $this->redirectUri;
     }
@@ -111,9 +131,11 @@ class OAuthConfig
     /**
      * Set the Redirect URI
      *
+     * @param string $redirectUri
+     *
      * @return $this
      */
-    public function setRedirectUri(string $redirectUri): static
+    public function setRedirectUri($redirectUri)
     {
         $this->redirectUri = $redirectUri;
 
@@ -122,8 +144,10 @@ class OAuthConfig
 
     /**
      * Get the authorization endpoint.
+     *
+     * @return string
      */
-    public function getAuthorizeEndpoint(): string
+    public function getAuthorizeEndpoint()
     {
         return $this->authorizeEndpoint;
     }
@@ -131,9 +155,11 @@ class OAuthConfig
     /**
      * Set the authorization endpoint.
      *
+     * @param string $authorizeEndpoint
+     *
      * @return $this
      */
-    public function setAuthorizeEndpoint(string $authorizeEndpoint): static
+    public function setAuthorizeEndpoint($authorizeEndpoint)
     {
         $this->authorizeEndpoint = $authorizeEndpoint;
 
@@ -142,8 +168,10 @@ class OAuthConfig
 
     /**
      * Get the token endpoint.
+     *
+     * @return string
      */
-    public function getTokenEndpoint(): string
+    public function getTokenEndpoint()
     {
         return $this->tokenEndpoint;
     }
@@ -151,9 +179,11 @@ class OAuthConfig
     /**
      * Set the token endpoint.
      *
+     * @param string $tokenEndpoint
+     *
      * @return $this
      */
-    public function setTokenEndpoint(string $tokenEndpoint): static
+    public function setTokenEndpoint($tokenEndpoint)
     {
         $this->tokenEndpoint = $tokenEndpoint;
 
@@ -162,8 +192,10 @@ class OAuthConfig
 
     /**
      * Get the user endpoint.
+     *
+     * @return string
      */
-    public function getUserEndpoint(): string
+    public function getUserEndpoint()
     {
         return $this->userEndpoint;
     }
@@ -171,9 +203,11 @@ class OAuthConfig
     /**
      * Set the user endpoint.
      *
+     * @param string $userEndpoint
+     *
      * @return $this
      */
-    public function setUserEndpoint(string $userEndpoint): static
+    public function setUserEndpoint($userEndpoint)
     {
         $this->userEndpoint = $userEndpoint;
 
@@ -185,7 +219,7 @@ class OAuthConfig
      *
      * @return array<string>
      */
-    public function getDefaultScopes(): array
+    public function getDefaultScopes()
     {
         return $this->defaultScopes;
     }
@@ -194,9 +228,10 @@ class OAuthConfig
      * Set the default scopes.
      *
      * @param array<string> $defaultScopes
+     *
      * @return $this
      */
-    public function setDefaultScopes(array $defaultScopes): static
+    public function setDefaultScopes(array $defaultScopes)
     {
         $this->defaultScopes = $defaultScopes;
 
@@ -206,12 +241,13 @@ class OAuthConfig
     /**
      * Set the request modifier callable which can be used to modify the request being sent
      *
-     * @param callable(\Saloon\Http\Request): (void) $requestModifier
+     * @param callable(Request): (void) $requestModifier
+     *
      * @return $this
      */
-    public function setRequestModifier(callable $requestModifier): static
+    public function setRequestModifier(callable $requestModifier)
     {
-        $this->requestModifier = $requestModifier(...);
+        $this->requestModifier = $requestModifier;
 
         return $this;
     }
@@ -219,12 +255,13 @@ class OAuthConfig
     /**
      * Invoke the OAuth2 config request modifier
      *
-     * @template TRequest of \Saloon\Http\Request
+     * @template TRequest of Request
      *
      * @param TRequest $request
+     *
      * @return TRequest
      */
-    public function invokeRequestModifier(Request $request): Request
+    public function invokeRequestModifier(Request $request)
     {
         $requestModifier = $this->requestModifier;
 
@@ -240,9 +277,13 @@ class OAuthConfig
     /**
      * Validate the OAuth2 config.
      *
-     * @throws \Saloon\Exceptions\OAuthConfigValidationException
+     * @param bool $withRedirectUrl
+     *
+     * @return bool
+     *
+     * @throws OAuthConfigValidationException
      */
-    public function validate(bool $withRedirectUrl = true): bool
+    public function validate($withRedirectUrl = true)
     {
         if (empty($this->getClientId())) {
             throw new OAuthConfigValidationException('The Client ID is empty or has not been provided.');

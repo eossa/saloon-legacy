@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\PendingRequest;
 
 use Saloon\Http\PendingRequest;
@@ -15,9 +13,11 @@ class MergeBody
     /**
      * Merge connector and request body
      *
-     * @throws \Saloon\Exceptions\PendingRequestException
+     * @return PendingRequest
+     *
+     * @throws PendingRequestException
      */
-    public function __invoke(PendingRequest $pendingRequest): PendingRequest
+    public function __invoke(PendingRequest $pendingRequest)
     {
         $connector = $pendingRequest->getConnector();
         $request = $pendingRequest->getRequest();
@@ -41,7 +41,7 @@ class MergeBody
         // body is null (not set) then we will use the connector body. If both are set
         // then the request body will still be preferred.
 
-        $body = $requestBody ?? $connectorBody;
+        $body = isset($requestBody) ? $requestBody : $connectorBody;
 
         // When both the connector and the request body repositories are mergeable then we
         // will merge them together.

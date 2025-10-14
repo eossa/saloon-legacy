@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Auth;
 
 use Saloon\Http\PendingRequest;
@@ -11,8 +9,10 @@ class NullAuthenticator implements Authenticator
 {
     /**
      * Apply the authentication to the request.
+     *
+     * @return void
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         //
     }

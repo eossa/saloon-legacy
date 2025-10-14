@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Mocking;
 
 use Saloon\Http\Faking\Fixture;
@@ -11,16 +9,20 @@ class BeforeSaveUserFixture extends Fixture
 {
     /**
      * Define the name of the fixture
+     *
+     * @return string
      */
-    protected function defineName(): string
+    protected function defineName()
     {
         return 'user';
     }
 
     /**
      * Modify the fixture before it is sent
+     *
+     * @return RecordedResponse
      */
-    protected function beforeSave(RecordedResponse $recordedResponse): RecordedResponse
+    protected function beforeSave(RecordedResponse $recordedResponse)
     {
         $recordedResponse->statusCode = 222;
 

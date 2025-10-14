@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Debuggers;
 
 use Saloon\Debugging\DebugData;
@@ -9,20 +7,33 @@ use Saloon\Debugging\Drivers\DebuggingDriver;
 
 class ArrayDebugger extends DebuggingDriver
 {
-    
-    protected array $requests = [];
 
-    
-    protected array $responses = [];
+    /**
+     * @var array
+     */
+    protected $requests = [];
 
-    
-    public function name(): string
+
+    /**
+     * @var array
+     */
+    protected $responses = [];
+
+
+    /**
+     * @return string
+     */
+    public function name()
     {
         return 'array';
     }
 
-    
-    public function send(DebugData $data): void
+
+    /**
+     * @param DebugData $data
+     * @return void
+     */
+    public function send(DebugData $data)
     {
         if ($data->wasNotSent()) {
             $this->requests[] = $this->formatData($data);
@@ -35,16 +46,20 @@ class ArrayDebugger extends DebuggingDriver
 
     /**
      * Get request
+     *
+     * @return array
      */
-    public function getRequests(): array
+    public function getRequests()
     {
         return $this->requests;
     }
 
     /**
      * Get response
+     *
+     * @return array
      */
-    public function getResponses(): array
+    public function getResponses()
     {
         return $this->responses;
     }
@@ -53,8 +68,10 @@ class ArrayDebugger extends DebuggingDriver
      * Determines if the debugging driver can be used
      *
      * E.g if it has the correct dependencies
+     *
+     * @return bool
      */
-    public function hasDependencies(): bool
+    public function hasDependencies()
     {
         return true;
     }

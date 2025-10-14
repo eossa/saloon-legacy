@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -13,30 +11,40 @@ class UserRequestWithBootPlugin extends Request
 {
     use WithBootTestPlugin;
 
+    public $userId = null;
+    public $groupId = null;
+
     /**
      * Define the method that the request will use.
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    public function __construct(public ?int $userId = null, public ?int $groupId = null)
+    /**
+     * @param int|null $userId
+     * @param int|null $groupId
+     */
+    public function __construct($userId = null, $groupId = null)
     {
-        //
+        $this->groupId = $groupId;
+        $this->userId = $userId;
     }
 }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Connector;
 
 use Saloon\Config;
@@ -11,26 +9,37 @@ trait HasSender
 {
     /**
      * Specify the default sender
+     *
+     * @var string
      */
-    protected string $defaultSender = '';
+    protected $defaultSender = '';
 
     /**
      * The request sender.
+     *
+     * @var Sender
      */
-    protected Sender $sender;
+    protected $sender;
 
     /**
      * Manage the request sender.
+     *
+     * @return Sender
      */
-    public function sender(): Sender
+    public function sender()
     {
-        return $this->sender ??= $this->defaultSender();
+        if (isset($this->sender)) {
+            return $this->sender;
+        }
+        return $this->sender = $this->defaultSender();
     }
 
     /**
      * Define the default request sender.
+     *
+     * @return Sender
      */
-    protected function defaultSender(): Sender
+    protected function defaultSender()
     {
         if (empty($this->defaultSender)) {
             return Config::getDefaultSender();

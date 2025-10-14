@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Faking;
 
+use Closure;
 use ReflectionClass;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
@@ -20,49 +19,53 @@ class MockClient
     /**
      * Collection of all the responses that will be sequenced.
      *
-     * @var array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable>
+     * @var array<MockResponse|Fixture|callable>
      */
-    protected array $sequenceResponses = [];
+    protected $sequenceResponses = [];
 
     /**
      * Collection of responses used only when a connector is called.
      *
-     * @var array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable>
+     * @var array<MockResponse|Fixture|callable>
      */
-    protected array $connectorResponses = [];
+    protected $connectorResponses = [];
 
     /**
      * Collection of responses used only when a request is called.
      *
-     * @var array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable>
+     * @var array<MockResponse|Fixture|callable>
      */
-    protected array $requestResponses = [];
+    protected $requestResponses = [];
 
     /**
      * Collection of responses that will run when the request is matched.
      *
-     * @var array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable>
+     * @var array<MockResponse|Fixture|callable>
      */
-    protected array $urlResponses = [];
+    protected $urlResponses = [];
 
     /**
      * Collection of all the recorded responses.
      *
-     * @var array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable>
+     * @var array<MockResponse|Fixture|callable|Response>
      */
-    protected array $recordedResponses = [];
+    protected $recordedResponses = [];
 
     /**
      * Global Mock Client
      *
      * Use MockClient::global() to register a global mock client
+     *
+     * @var ?MockClient
      */
-    protected static ?MockClient $globalMockClient = null;
+    protected static $globalMockClient = null;
 
     /**
      * Constructor
      *
-     * @param array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable> $mockData
+     * @param array<MockResponse|Fixture|callable> $mockData
+     *
+     * @throws InvalidMockResponseCaptureMethodException
      */
     public function __construct(array $mockData = [])
     {
@@ -72,9 +75,13 @@ class MockClient
     /**
      * Store the mock responses in the correct places.
      *
-     * @param array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable> $responses
+     * @param array<MockResponse|Fixture|callable> $responses
+     *
+     * @return void
+     *
+     * @throws InvalidMockResponseCaptureMethodException
      */
-    public function addResponses(array $responses): void
+    public function addResponses(array $responses)
     {
         foreach ($responses as $key => $response) {
             if (is_int($key)) {
@@ -87,8 +94,15 @@ class MockClient
 
     /**
      * Add a mock response to the client
+     *
+     * @param MockResponse|Fixture|callable $response
+     * @param ?string $captureMethod
+     *
+     * @return void
+     *
+     * @throws InvalidMockResponseCaptureMethodException
      */
-    public function addResponse(MockResponse|Fixture|callable $response, ?string $captureMethod = null): void
+    public function addResponse($response, $captureMethod = null)
     {
         if (is_null($captureMethod)) {
             $this->sequenceResponses[] = $response;
@@ -126,8 +140,10 @@ class MockClient
 
     /**
      * Get the next response in the sequence
+     *
+     * @return mixed
      */
-    public function getNextFromSequence(): mixed
+    public function getNextFromSequence()
     {
         return array_shift($this->sequenceResponses);
     }
@@ -135,9 +151,11 @@ class MockClient
     /**
      * Guess the next response based on the request.
      *
-     * @throws \Saloon\Exceptions\NoMockResponseFoundException
+     * @return MockResponse|Fixture
+     *
+     * @throws NoMockResponseFoundException
      */
-    public function guessNextResponse(PendingRequest $pendingRequest): MockResponse|Fixture
+    public function guessNextResponse(PendingRequest $pendingRequest)
     {
         $request = $pendingRequest->getRequest();
         $requestClass = get_class($request);
@@ -167,8 +185,10 @@ class MockClient
 
     /**
      * Guess the response from the URL.
+     *
+     * @return MockResponse|Fixture|callable|null
      */
-    private function guessResponseFromUrl(PendingRequest $pendingRequest): MockResponse|Fixture|callable|null
+    private function guessResponseFromUrl(PendingRequest $pendingRequest)
     {
         foreach ($this->urlResponses as $url => $response) {
             if (! URLHelper::matches($url, $pendingRequest->getUrl())) {
@@ -183,16 +203,20 @@ class MockClient
 
     /**
      * Check if the responses are empty.
+     *
+     * @return bool
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return empty($this->sequenceResponses) && empty($this->connectorResponses) && empty($this->requestResponses) && empty($this->urlResponses);
     }
 
     /**
      * Record a response.
+     *
+     * @return void
      */
-    public function recordResponse(Response $response): void
+    public function recordResponse(Response $response)
     {
         $this->recordedResponses[] = $response;
     }
@@ -200,33 +224,47 @@ class MockClient
     /**
      * Get all the recorded responses
      *
-     * @return array<\Saloon\Http\Response>
+     * @return callable[]|Fixture[]|MockResponse[]|Response[]
      */
-    public function getRecordedResponses(): array
+    public function getRecordedResponses()
     {
         return $this->recordedResponses;
     }
 
     /**
      * Get the last request that the mock manager sent.
+     *
+     * @return ?Request
      */
-    public function getLastRequest(): ?Request
+    public function getLastRequest()
     {
-        return $this->getLastResponse()?->getPendingRequest()->getRequest();
+        $response = $this->getLastResponse();
+        if (is_null($response)) {
+            return null;
+        }
+        return $response->getPendingRequest()->getRequest();
     }
 
     /**
      * Get the last request that the mock manager sent.
+     *
+     * @return ?PendingRequest
      */
-    public function getLastPendingRequest(): ?PendingRequest
+    public function getLastPendingRequest()
     {
-        return $this->getLastResponse()?->getPendingRequest();
+        $response = $this->getLastResponse();
+        if (is_null($response)) {
+            return null;
+        }
+        return $response->getPendingRequest();
     }
 
     /**
      * Get the last response that the mock manager sent.
+     *
+     * @return ?Response
      */
-    public function getLastResponse(): ?Response
+    public function getLastResponse()
     {
         if (empty($this->recordedResponses)) {
             return null;
@@ -241,8 +279,12 @@ class MockClient
 
     /**
      * Assert that a given request was sent.
+     *
+     * @param string|callable $value
+     *
+     * @return void
      */
-    public function assertSent(string|callable $value): void
+    public function assertSent($value)
     {
         $result = $this->checkRequestWasSent($value);
 
@@ -251,8 +293,12 @@ class MockClient
 
     /**
      * Assert that a given request was not sent.
+     *
+     * @param string|callable $request
+     *
+     * @return void
      */
-    public function assertNotSent(string|callable $request): void
+    public function assertNotSent($request)
     {
         $result = $this->checkRequestWasNotSent($request);
 
@@ -262,9 +308,11 @@ class MockClient
     /**
      * Assert that given requests were sent in order
      *
-     * @param array<\Closure|class-string<Request>|string> $callbacks
+     * @param array<Closure|class-string<Request>|string> $callbacks
+     *
+     * @return void
      */
-    public function assertSentInOrder(array $callbacks): void
+    public function assertSentInOrder(array $callbacks)
     {
         $this->assertSentCount(count($callbacks));
 
@@ -280,9 +328,12 @@ class MockClient
      *
      * @deprecated This method will be removed in v4
      *
+     * @param class-string<Request> $request
      * @param array<string, mixed> $data
+     *
+     * @return void
      */
-    public function assertSentJson(string $request, array $data): void
+    public function assertSentJson($request, array $data)
     {
         $this->assertSent(function ($currentRequest, $currentResponse) use ($request, $data) {
             return $currentRequest instanceof $request && $currentResponse->json() === $data;
@@ -291,19 +342,27 @@ class MockClient
 
     /**
      * Assert that nothing was sent.
+     *
+     * @return void
      */
-    public function assertNothingSent(): void
+    public function assertNothingSent()
     {
         PHPUnit::assertEmpty($this->getRecordedResponses(), 'Requests were sent.');
     }
 
     /**
      * Assert a request count has been met.
+     *
+     * @param int $count
+     * @param ?string $requestClass
+     *
+     * @return void
      */
-    public function assertSentCount(int $count, ?string $requestClass = null): void
+    public function assertSentCount($count, $requestClass = null)
     {
         if (is_string($requestClass)) {
-            $actualCount = $this->getRequestSentCount()[$requestClass] ?? 0;
+            $requestSentCount = $this->getRequestSentCount();
+            $actualCount = isset($requestSentCount[$requestClass]) ? $requestSentCount[$requestClass] : 0;
 
             PHPUnit::assertEquals($count, $actualCount);
 
@@ -315,8 +374,13 @@ class MockClient
 
     /**
      * Check if a given request was sent
+     *
+     * @param callable|string $request
+     * @param int|null $index
+     *
+     * @return bool
      */
-    protected function checkRequestWasSent(string|callable $request, ?int $index = null): bool
+    protected function checkRequestWasSent($request, $index = null)
     {
         $passed = false;
 
@@ -337,16 +401,25 @@ class MockClient
 
     /**
      * Check if a request has not been sent.
+     *
+     * @param string|callable $request
+     *
+     * @return bool
      */
-    protected function checkRequestWasNotSent(string|callable $request): bool
+    protected function checkRequestWasNotSent($request)
     {
         return ! $this->checkRequestWasSent($request);
     }
 
     /**
      * Assert a given request was sent.
+     *
+     * @param string $request
+     * @param int|null $index
+     *
+     * @return Response|null
      */
-    public function findResponseByRequest(string $request, ?int $index = null): ?Response
+    public function findResponseByRequest($request, $index = null)
     {
         if ($this->checkHistoryEmpty() === true) {
             return null;
@@ -377,8 +450,13 @@ class MockClient
 
     /**
      * Find a request that matches a given url pattern
+     *
+     * @param string $url
+     * @param int|null $index
+     *
+     * @return Response|null
      */
-    public function findResponseByRequestUrl(string $url, ?int $index = null): ?Response
+    public function findResponseByRequestUrl($url, $index = null)
     {
         if ($this->checkHistoryEmpty() === true) {
             return null;
@@ -419,33 +497,49 @@ class MockClient
      * application's lifecycle. You should destroy the global mock client
      * after each test using MockClient::destroyGlobal().
      *
-     * @param array<\Saloon\Http\Faking\MockResponse|\Saloon\Http\Faking\Fixture|callable> $mockData
+     * @param array<MockResponse|Fixture|callable> $mockData
+     *
+     * @return MockClient
+     *
+     * @throws InvalidMockResponseCaptureMethodException
      */
-    public static function global(array $mockData = []): MockClient
+    public static function setGlobal(array $mockData = [])
     {
-        return static::$globalMockClient ??= new static($mockData);
+        if (isset(static::$globalMockClient)) {
+            return static::$globalMockClient;
+        }
+        return static::$globalMockClient = new static($mockData);
     }
 
     /**
      * Get the global mock client if it has been registered
+     *
+     * @return ?MockClient
      */
-    public static function getGlobal(): ?MockClient
+    public static function getGlobal()
     {
         return static::$globalMockClient;
     }
 
     /**
      * Destroy the global mock client
+     *
+     * @return void
      */
-    public static function destroyGlobal(): void
+    public static function destroyGlobal()
     {
         static::$globalMockClient = null;
     }
 
     /**
      * Test if the closure can pass with the history.
+     *
+     * @param callable $closure
+     * @param int|null $index
+     *
+     * @return bool
      */
-    private function checkClosureAgainstResponses(callable $closure, ?int $index = null): bool
+    private function checkClosureAgainstResponses(callable $closure, $index = null)
     {
         if ($this->checkHistoryEmpty() === true) {
             return false;
@@ -489,16 +583,23 @@ class MockClient
 
     /**
      * Will return true if the history is empty.
+     *
+     * @return bool
      */
-    private function checkHistoryEmpty(): bool
+    private function checkHistoryEmpty()
     {
         return count($this->recordedResponses) <= 0;
     }
 
     /**
      * Get the mock value.
+     *
+     * @param MockResponse|Fixture|callable $mockable
+     * @param PendingRequest $pendingRequest
+     *
+     * @return MockResponse|Fixture
      */
-    private function mockResponseValue(MockResponse|Fixture|callable $mockable, PendingRequest $pendingRequest): MockResponse|Fixture
+    private function mockResponseValue($mockable, PendingRequest $pendingRequest)
     {
         if ($mockable instanceof MockResponse) {
             return $mockable;
@@ -516,10 +617,10 @@ class MockClient
      *
      * @return array<class-string, int>
      */
-    private function getRequestSentCount(): array
+    private function getRequestSentCount()
     {
         $requests = array_map(static function (Response $response) {
-            return $response->getRequest()::class;
+            return get_class($response->getRequest());
         }, $this->getRecordedResponses());
 
         return array_count_values($requests);

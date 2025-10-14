@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Contracts;
 
 interface IntegerStore
@@ -9,22 +7,30 @@ interface IntegerStore
     /**
      * Set a value inside the repository
      *
+     * @param int|null $value
+     *
      * @return $this
      */
-    public function set(?int $value): static;
+    public function set($value);
 
     /**
      * Retrieve all in the repository
+     *
+     * @return int|null
      */
-    public function get(): ?int;
+    public function get();
 
     /**
      * Determine if the repository is empty
+     *
+     * @return bool
      */
-    public function isEmpty(): bool;
+    public function isEmpty();
 
     /**
      * Determine if the repository is not empty
+     *
+     * @return bool
      */
-    public function isNotEmpty(): bool;
+    public function isNotEmpty();
 }

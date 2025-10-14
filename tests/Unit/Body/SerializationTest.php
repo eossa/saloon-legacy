@@ -1,31 +1,38 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\Body\FormBodyRepository;
 use Saloon\Repositories\Body\JsonBodyRepository;
 use Saloon\Repositories\Body\StringBodyRepository;
 
-test('the JsonBodyRepository can be encoded into JSON', function () {
-    $body = new JsonBodyRepository([
-        'name' => 'Sam',
-        'sidekick' => 'Mantas',
-    ]);
+class SerializationTest extends TestCase
+{
+    public function testTheJsonBodyRepositoryCanBeEncodedIntoJSON()
+    {
+        $body = new JsonBodyRepository([
+            'name' => 'Sam',
+            'sidekick' => 'Mantas',
+        ]);
 
-    expect((string)$body)->toEqual('{"name":"Sam","sidekick":"Mantas"}');
-});
+        $this->assertEquals('{"name":"Sam","sidekick":"Mantas"}', (string)$body);
+    }
 
-test('the FormBodyRepository can be encoded into a query list', function () {
-    $body = new FormBodyRepository([
-        'name' => 'Sam',
-        'sidekick' => 'Mantas',
-    ]);
+    public function testTheFormBodyRepositoryCanBeEncodedIntoAQueryList()
+    {
+        $body = new FormBodyRepository([
+            'name' => 'Sam',
+            'sidekick' => 'Mantas',
+        ]);
 
-    expect((string)$body)->toEqual('name=Sam&sidekick=Mantas');
-});
+        $this->assertEquals('name=Sam&sidekick=Mantas', (string)$body);
+    }
 
-test('the StringBodyRepository can be encoded into a string', function () {
-    $body = new StringBodyRepository('name: Sam');
+    public function testTheStringBodyRepositoryCanBeEncodedIntoAString()
+    {
+        $body = new StringBodyRepository('name: Sam');
 
-    expect((string)$body)->toEqual('name: Sam');
-});
+        $this->assertEquals('name: Sam', (string)$body);
+    }
+}

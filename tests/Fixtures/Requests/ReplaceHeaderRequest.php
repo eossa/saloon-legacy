@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -18,31 +16,39 @@ class ReplaceHeaderRequest extends Request
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = HeaderConnector::class;
+    protected $connector = HeaderConnector::class;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    public function defaultHeaders(): array
+    /**
+     * @return array{X-Connector-Header: string}
+     */
+    public function defaultHeaders()
     {
         return [
             'X-Connector-Header' => 'Howdy',
         ];
     }
 
-    public function defaultData(): array
+    /**
+     * @return array{foo: string}
+     */
+    public function defaultData()
     {
         return [
             'foo' => 'bar',

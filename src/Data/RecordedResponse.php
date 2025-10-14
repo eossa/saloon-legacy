@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Data;
 
+use Exception;
 use JsonSerializable;
 use Saloon\Http\Response;
 use Saloon\Http\Faking\MockResponse;
@@ -11,24 +10,47 @@ use Saloon\Http\Faking\MockResponse;
 class RecordedResponse implements JsonSerializable
 {
     /**
+     * @var int
+     */
+    public $statusCode;
+
+    /**
+     * @var mixed[]
+     */
+    public $headers;
+
+    /**
+     * @var mixed
+     */
+    public $data;
+
+    /**
      * Constructor
      *
+     * @param int $statusCode
      * @param array<string, mixed> $headers
+     * @param mixed $data
      */
     public function __construct(
-        public int   $statusCode,
-        public array $headers = [],
-        public mixed $data = null,
+        $statusCode,
+        array $headers = [],
+        $data = null
     ) {
-        //
+        $this->statusCode = $statusCode;
+        $this->headers = $headers;
+        $this->data = $data;
     }
 
     /**
      * Create an instance from file contents
      *
-     * @throws \JsonException
+     * @param string $contents
+     *
+     * @return $this
+     *
+     * @throws Exception
      */
-    public static function fromFile(string $contents): static
+    public static function fromFile($contents)
     {
         /**
          * @param array{
@@ -37,7 +59,11 @@ class RecordedResponse implements JsonSerializable
          *     data: mixed,
          * } $fileData
          */
-        $fileData = json_decode($contents, true, 512, JSON_THROW_ON_ERROR);
+        $fileData = json_decode($contents, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception(json_last_error_msg());
+        }
 
         $data = $fileData['data'];
 
@@ -46,38 +72,48 @@ class RecordedResponse implements JsonSerializable
         }
 
         return new static(
-            statusCode: $fileData['statusCode'],
-            headers: $fileData['headers'],
-            data: $data
+            $fileData['statusCode'],
+            $fileData['headers'],
+            $data
         );
     }
 
     /**
      * Create an instance from a Response
+     *
+     * @return $this
      */
-    public static function fromResponse(Response $response): static
+    public static function fromResponse(Response $response)
     {
         return new static(
-            statusCode: $response->status(),
-            headers: $response->headers()->all(),
-            data: $response->body(),
+            $response->status(),
+            $response->headers()->all(),
+            $response->body()
         );
     }
 
     /**
      * Encode the instance to be stored as a file
      *
-     * @throws \JsonException
+     * @return string
+     *
+     * @throws Exception
      */
-    public function toFile(): string
+    public function toFile()
     {
-        return json_encode($this, JSON_THROW_ON_ERROR | JSON_PRETTY_PRINT);
+        $data = json_encode($this, JSON_PRETTY_PRINT);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new Exception(json_last_error_msg());
+        }
+        return $data;
     }
 
     /**
      * Create a mock response from the fixture
+     *
+     * @return MockResponse
      */
-    public function toMockResponse(): MockResponse
+    public function toMockResponse()
     {
         return new MockResponse($this->data, $this->statusCode, $this->headers);
     }
@@ -91,7 +127,7 @@ class RecordedResponse implements JsonSerializable
      *     data: mixed,
      * }
      */
-    public function jsonSerialize(): array
+    public function jsonSerialize()
     {
         $response = [
             'statusCode' => $this->statusCode,
@@ -99,11 +135,29 @@ class RecordedResponse implements JsonSerializable
             'data' => $this->data,
         ];
 
-        if (mb_check_encoding($response['data'], 'UTF-8') === false) {
+        if ($this->checkIfEncodingIsInvalid($response['data'])) {
             $response['data'] = base64_encode($response['data']);
             $response['encoding'] = 'base64';
         }
 
         return $response;
+    }
+
+    /**
+     * @param array|string $value
+     *
+     * @return bool
+     */
+    private function checkIfEncodingIsInvalid($value)
+    {
+        if (is_string($value)) {
+            return mb_check_encoding($value, 'UTF-8') === false;
+        }
+        if (is_array($value)) {
+            return array_reduce($value, function ($carry, $item) {
+                return $carry || $this->checkIfEncodingIsInvalid($item);
+            }, false);
+        }
+        return true;
     }
 }

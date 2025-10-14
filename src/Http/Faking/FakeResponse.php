@@ -1,11 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Faking;
 
 use Closure;
-use Throwable;
+use Exception;
+use Saloon\Exceptions\DirectoryNotFoundException;
+use Saloon\Exceptions\UnableToCreateDirectoryException;
 use Saloon\Traits\Makeable;
 use Saloon\Http\PendingRequest;
 use Saloon\Repositories\ArrayStore;
@@ -27,31 +27,40 @@ class FakeResponse implements FakeResponseContract
 
     /**
      * HTTP Status Code
+     *
+     * @var int
      */
-    protected int $status;
+    protected $status;
 
     /**
      * Headers
+     *
+     * @var ArrayStoreContract
      */
-    protected ArrayStoreContract $headers;
+    protected $headers;
 
     /**
      * Request Body
+     *
+     * @var BodyRepository
      */
-    protected BodyRepository $body;
+    protected $body;
 
     /**
      * Exception Closure
+     *
+     * @var Closure|null
      */
-    protected ?Closure $responseException = null;
+    protected $responseException = null;
 
     /**
      * Create a new mock response
      *
      * @param array<string, mixed>|string $body
+     * @param int $status
      * @param array<string, mixed> $headers
      */
-    public function __construct(array|string $body = [], int $status = 200, array $headers = [])
+    public function __construct($body = [], $status = 200, array $headers = [])
     {
         $this->body = is_array($body) ? new JsonBodyRepository($body) : new StringBodyRepository($body);
         $this->status = $status;
@@ -60,24 +69,30 @@ class FakeResponse implements FakeResponseContract
 
     /**
      *  Get the response body
+     *
+     * @return BodyRepository
      */
-    public function body(): BodyRepository
+    public function body()
     {
         return $this->body;
     }
 
     /**
      * Get the status from the responses
+     *
+     * @return int
      */
-    public function status(): int
+    public function status()
     {
         return $this->status;
     }
 
     /**
      * Get the headers
+     *
+     * @return ArrayStoreContract
      */
-    public function headers(): ArrayStoreContract
+    public function headers()
     {
         return $this->headers;
     }
@@ -85,11 +100,17 @@ class FakeResponse implements FakeResponseContract
     /**
      * Throw an exception on the request.
      *
+     * @param Closure|Exception $value
+     *
      * @return $this
      */
-    public function throw(Closure|Throwable $value): static
+    public function throwException($value)
     {
-        $closure = $value instanceof Throwable ? static fn () => $value : $value;
+        $closure = $value instanceof Exception
+            ? static function () use ($value) {
+                return $value;
+            }
+            : $value;
 
         $this->responseException = $closure;
 
@@ -98,8 +119,10 @@ class FakeResponse implements FakeResponseContract
 
     /**
      * Invoke the exception.
+     *
+     * @return Exception|null
      */
-    public function getException(PendingRequest $pendingRequest): ?Throwable
+    public function getException(PendingRequest $pendingRequest)
     {
         if (! $this->responseException instanceof Closure) {
             return null;
@@ -110,16 +133,27 @@ class FakeResponse implements FakeResponseContract
 
     /**
      * Create a new mock response from a fixture
+     *
+     * @param string $name
+     *
+     * @return Fixture
+     *
+     * @throws DirectoryNotFoundException
+     * @throws UnableToCreateDirectoryException
      */
-    public static function fixture(string $name): Fixture
+    public static function fixture($name)
     {
         return new Fixture($name);
     }
 
     /**
      * Get the response as a ResponseInterface
+     *
+     * @param ResponseFactoryInterface $responseFactory
+     * @param StreamFactoryInterface $streamFactory
+     * @return ResponseInterface
      */
-    public function createPsrResponse(ResponseFactoryInterface $responseFactory, StreamFactoryInterface $streamFactory): ResponseInterface
+    public function createPsrResponse(ResponseFactoryInterface $responseFactory, StreamFactoryInterface $streamFactory)
     {
         $response = $responseFactory->createResponse($this->status());
 

@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Http\Senders\GuzzleSender;
 use Saloon\Tests\Fixtures\Senders\ArraySender;
@@ -8,56 +8,59 @@ use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Connectors\ArraySenderConnector;
 use Saloon\Tests\Fixtures\Connectors\ArraySenderDefaultMethodConnector;
+use PHPUnit\Framework\TestCase;
 
-test('the default sender on all connectors is the guzzle sender', function () {
-    $connector = new TestConnector();
-    $sender = $connector->sender();
+class SenderTest extends TestCase
+{
+    public function testTheDefaultSenderOnAllConnectorsIsTheGuzzleSender()
+    {
+        $connector = new TestConnector();
+        $sender = $connector->sender();
 
-    expect($sender)->toBeInstanceOf(GuzzleSender::class);
+        $this->assertInstanceOf(GuzzleSender::class, $sender);
 
-    // Test the same instance is re-used
+        // Test the same instance is re-used
+        $this->assertSame($sender, $connector->sender());
+    }
 
-    expect($connector->sender())->toBe($sender);
-});
+    public function testYouCanOverwriteTheSenderOnAConnectorUsingTheProperty()
+    {
+        $connector = new ArraySenderConnector();
+        $sender = $connector->sender();
 
-test('you can overwrite the sender on a connector using the property', function () {
-    $connector = new ArraySenderConnector();
-    $sender = $connector->sender();
+        $this->assertInstanceOf(ArraySender::class, $sender);
+        $this->assertSame($sender, $connector->sender());
 
-    expect($sender)->toBeInstanceOf(ArraySender::class);
-    expect($connector->sender())->toBe($sender);
+        // Test using the connector with the custom sender
+        $request = new UserRequest();
+        $response = $connector->send($request);
 
-    // Test using the connector with the custom sender
+        $this->assertEquals(['X-Fake' => true], $response->headers()->all());
+        $this->assertEquals('Default', $response->body());
+    }
 
-    $request = new UserRequest();
-    $response = $connector->send($request);
+    public function testYouCanOverwriteTheSenderOnAConnectorUsingTheDefaultSenderMethod()
+    {
+        $connector = new ArraySenderDefaultMethodConnector();
+        $sender = $connector->sender();
 
-    expect($response->headers()->all())->toEqual(['X-Fake' => true]);
-    expect($response->body())->toEqual('Default');
-});
+        $this->assertInstanceOf(ArraySender::class, $sender);
+        $this->assertSame($sender, $connector->sender());
 
-test('you can overwrite the sender on a connector using the defaultSender method', function () {
-    $connector = new ArraySenderDefaultMethodConnector();
-    $sender = $connector->sender();
+        // Test using the connector with the custom sender
+        $request = new UserRequest();
+        $response = $connector->send($request);
 
-    expect($sender)->toBeInstanceOf(ArraySender::class);
-    expect($connector->sender())->toBe($sender);
+        $this->assertEquals(['X-Fake' => true], $response->headers()->all());
+        $this->assertEquals('Default', $response->body());
+    }
 
-    // Test using the connector with the custom sender
+    public function testItWillThrowAnExceptionIfTheSenderDoesNotImplementTheSenderInterface()
+    {
+        $connector = new ArraySenderConnector();
+        $connector->setDefaultSender(UserRequest::class);
 
-    $request = new UserRequest();
-    $response = $connector->send($request);
-
-    expect($response->headers()->all())->toEqual(['X-Fake' => true]);
-    expect($response->body())->toEqual('Default');
-});
-
-test('it will throw an exception if the sender does not implement the sender interface', function () {
-    $connector = new ArraySenderConnector();
-    $connector->setDefaultSender(UserRequest::class);
-
-    $this->expectException(TypeError::class);
-    $this->expectExceptionMessage('Return value must be of type Saloon\Contracts\Sender, Saloon\Tests\Fixtures\Requests\UserRequest returned');
-
-    $connector->sender();
-});
+        $this->markTestSkipped('In PHP 5.6, TypeError doesn\'t exist');
+        $connector->sender();
+    }
+}

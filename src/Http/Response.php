@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
-use Throwable;
+use Exception;
 use LogicException;
 use SimpleXMLElement;
 use Saloon\Traits\Macroable;
@@ -29,60 +27,83 @@ class Response
 
     /**
      * The PSR request
+     *
+     * @var RequestInterface
      */
-    protected readonly RequestInterface $psrRequest;
+    protected $psrRequest;
 
     /**
      * The PSR response from the sender.
+     *
+     * @var ResponseInterface
      */
-    protected readonly ResponseInterface $psrResponse;
+    protected $psrResponse;
 
     /**
      * The pending request that has all the request properties
+     *
+     * @var PendingRequest
      */
-    protected readonly PendingRequest $pendingRequest;
+    protected $pendingRequest;
 
     /**
      * The original sender exception
+     *
+     * @var Exception|null
      */
-    protected ?Throwable $senderException = null;
+    protected $senderException = null;
 
     /**
      * The decoded JSON response.
      *
      * @var array<array-key, mixed>
      */
-    protected array $decodedJson;
+    protected $decodedJson;
 
     /**
      * The decoded JSON response object.
+     *
+     * @var mixed
      */
-    protected mixed $decodedJsonObject;
+    protected $decodedJsonObject;
 
     /**
      * The decoded XML response.
+     *
+     * @var string
      */
-    protected string $decodedXml;
+    protected $decodedXml;
 
     /**
      * Denotes if the response has been mocked.
+     *
+     * @var bool
      */
-    protected bool $mocked = false;
+    protected $mocked = false;
 
     /**
      * Denotes if the response has been cached.
+     *
+     * @var bool
      */
-    protected bool $cached = false;
+    protected $cached = false;
 
     /**
      * The simulated response payload if the response was simulated.
+     *
+     * @var FakeResponse|null
      */
-    protected ?FakeResponse $fakeResponse = null;
+    protected $fakeResponse = null;
 
     /**
      * Create a new response instance.
+     *
+     * @param ResponseInterface $psrResponse
+     * @param PendingRequest $pendingRequest
+     * @param RequestInterface $psrRequest
+     * @param Exception|null $senderException
      */
-    public function __construct(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, ?Throwable $senderException = null)
+    public function __construct(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, Exception $senderException = null)
     {
         $this->psrRequest = $psrRequest;
         $this->psrResponse = $psrResponse;
@@ -92,56 +113,75 @@ class Response
 
     /**
      * Create a new response instance
+     *
+     * @param ResponseInterface $psrResponse
+     * @param PendingRequest $pendingRequest
+     * @param RequestInterface $psrRequest
+     * @param Exception|null $senderException
+     *
+     * @return static
      */
-    public static function fromPsrResponse(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, ?Throwable $senderException = null): static
+    public static function fromPsrResponse(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, Exception $senderException = null)
     {
         return new static($psrResponse, $pendingRequest, $psrRequest, $senderException);
     }
 
     /**
      * Get the pending request that created the response.
+     *
+     * @return PendingRequest
      */
-    public function getPendingRequest(): PendingRequest
+    public function getPendingRequest()
     {
         return $this->pendingRequest;
     }
 
     /**
      * Get the connector that sent the request
+     *
+     * @return Connector
      */
-    public function getConnector(): Connector
+    public function getConnector()
     {
         return $this->pendingRequest->getConnector();
     }
 
     /**
      * Get the original request that created the response.
+     *
+     * @return Request
      */
-    public function getRequest(): Request
+    public function getRequest()
     {
         return $this->pendingRequest->getRequest();
     }
 
     /**
      * Get the PSR-7 request
+     *
+     * @return RequestInterface
      */
-    public function getPsrRequest(): RequestInterface
+    public function getPsrRequest()
     {
         return $this->psrRequest;
     }
 
     /**
      * Create a PSR response from the raw response.
+     *
+     * @return ResponseInterface
      */
-    public function getPsrResponse(): ResponseInterface
+    public function getPsrResponse()
     {
         return $this->psrResponse;
     }
 
     /**
      * Get the body of the response as string.
+     *
+     * @return string
      */
-    public function body(): string
+    public function body()
     {
         $stream = $this->stream();
 
@@ -156,8 +196,10 @@ class Response
 
     /**
      * Get the body as a stream.
+     *
+     * @return StreamInterface
      */
-    public function stream(): StreamInterface
+    public function stream()
     {
         $stream = $this->psrResponse->getBody();
 
@@ -170,8 +212,10 @@ class Response
 
     /**
      * Get the headers from the response.
+     *
+     * @return ArrayStoreContract
      */
-    public function headers(): ArrayStoreContract
+    public function headers()
     {
         $headers = array_map(static function (array $header) {
             return count($header) === 1 ? $header[0] : $header;
@@ -182,16 +226,20 @@ class Response
 
     /**
      * Get the status code of the response.
+     *
+     * @return int
      */
-    public function status(): int
+    public function status()
     {
         return $this->psrResponse->getStatusCode();
     }
 
     /**
      * Get the original sender exception
+     *
+     * @return Exception|null
      */
-    public function getSenderException(): ?Throwable
+    public function getSenderException()
     {
         return $this->senderException;
     }
@@ -200,12 +248,19 @@ class Response
      * Get the JSON decoded body of the response as an array or scalar value.
      *
      * @param array-key|null $key
+     * @param mixed $default
+     *
      * @return ($key is null ? array<array-key, mixed> : mixed)
+     *
+     * @throws Exception
      */
-    public function json(string|int|null $key = null, mixed $default = null): mixed
+    public function json($key = null, $default = null)
     {
         if (! isset($this->decodedJson)) {
-            $this->decodedJson = json_decode($this->body() ?: '[]', true, 512, JSON_THROW_ON_ERROR);
+            $this->decodedJson = json_decode($this->body() ?: '[]', true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception(json_last_error_msg());
+            }
         }
 
         if (is_null($key)) {
@@ -221,20 +276,34 @@ class Response
      * Alias of json()
      *
      * @param array-key|null $key
+     * @param mixed $default
+     *
      * @return ($key is null ? array<array-key, mixed> : mixed)
+     *
+     * @throws Exception
      */
-    public function array(int|string|null $key = null, mixed $default = null): mixed
+    public function toArray($key = null, $default = null)
     {
         return $this->json($key, $default);
     }
 
     /**
      * Get the JSON decoded body of the response as an object or scalar value.
+     *
+     * @param array-key|null $key
+     * @param mixed $default
+     *
+     * @return ($key is null ? object : mixed)
+     *
+     * @throws Exception
      */
-    public function object(string|int|null $key = null, mixed $default = null): mixed
+    public function object($key = null, $default = null)
     {
         if (! isset($this->decodedJsonObject)) {
-            $this->decodedJsonObject = json_decode($this->body() ?: '{}', false, 512, JSON_THROW_ON_ERROR);
+            $this->decodedJsonObject = json_decode($this->body() ?: '{}', false);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception(json_last_error_msg());
+            }
         }
 
         if (is_null($key)) {
@@ -252,8 +321,12 @@ class Response
      * using the xmlReader method instead for better compatibility.
      *
      * @see https://www.php.net/manual/en/book.simplexml.php
+     *
+     * @param mixed ...$arguments
+     *
+     * @return SimpleXMLElement|bool
      */
-    public function xml(mixed ...$arguments): SimpleXMLElement|bool
+    public function xml(...$arguments)
     {
         if (! isset($this->decodedXml)) {
             $this->decodedXml = $this->body();
@@ -269,8 +342,10 @@ class Response
      * documents. Requires XML Wrangler (composer require saloonphp/xml-wrangler)
      *
      * @see https://github.com/saloonphp/xml-wrangler
+     *
+     * @return XmlReader
      */
-    public function xmlReader(): XmlReader
+    public function xmlReader()
     {
         return XmlReader::fromSaloonResponse($this);
     }
@@ -282,32 +357,37 @@ class Response
      * @see https://github.com/illuminate/collections
      *
      * @param array-key|null $key
-     * @return \Illuminate\Support\Collection<array-key, mixed>
+     *
+     * @return Collection<array-key, mixed>
+     *
+     * @throws Exception
      */
-    public function collect(string|int|null $key = null): Collection
+    public function collect($key = null)
     {
         $data = $this->json($key);
 
         if (is_null($data)) {
-            return Collection::empty();
+            return new Collection();
         }
 
         if (is_array($data)) {
-            return Collection::make($data);
+            return new Collection($data);
         }
 
-        return Collection::make([$data]);
+        return new Collection([$data]);
     }
 
     /**
      * Cast the response to a DTO.
+     *
+     * @return mixed
      */
-    public function dto(): mixed
+    public function dto()
     {
         $request = $this->pendingRequest->getRequest();
         $connector = $this->pendingRequest->getConnector();
 
-        $dataObject = $request->createDtoFromResponse($this) ?? $connector->createDtoFromResponse($this);
+        $dataObject = $request->createDtoFromResponse($this) ?: $connector->createDtoFromResponse($this);
 
         if ($dataObject instanceof WithResponse) {
             $dataObject->setResponse($this);
@@ -318,8 +398,10 @@ class Response
 
     /**
      * Convert the response into a DTO or throw a LogicException if the response failed
+     *
+     * @return mixed
      */
-    public function dtoOrFail(): mixed
+    public function dtoOrFail()
     {
         if ($this->failed()) {
             throw new LogicException('Unable to create data transfer object as the response has failed.', 0, $this->toException());
@@ -334,48 +416,60 @@ class Response
      * Requires Symfony Crawler (composer require symfony/dom-crawler)
      *
      * @see https://symfony.com/doc/current/components/dom_crawler.html
+     *
+     * @return Crawler
      */
-    public function dom(): Crawler
+    public function dom()
     {
         return new Crawler($this->body());
     }
 
     /**
      * Convert the response to a data URL
+     *
+     * @return string
      */
-    public function dataUrl(): string
+    public function dataUrl()
     {
         return 'data:'.$this->psrResponse->getHeaderLine('Content-Type').';base64,'.base64_encode($this->body());
     }
 
     /**
      * Determine if the request was successful.
+     *
+     * @return bool
      */
-    public function successful(): bool
+    public function successful()
     {
         return $this->status() >= 200 && $this->status() < 300;
     }
 
     /**
      * Determine if the response code was "OK".
+     *
+     * @return bool
      */
-    public function ok(): bool
+    public function ok()
     {
         return $this->status() === 200;
     }
 
     /**
      * Determine if the response was a redirect.
+     *
+     * @return bool
      */
-    public function redirect(): bool
+    public function redirect()
     {
         return $this->status() >= 300 && $this->status() < 400;
     }
 
     /**
      * Determine if the response indicates a client or server error occurred.
+     *
+     * @return bool
      */
-    public function failed(): bool
+    public function failed()
     {
         $pendingRequest = $this->getPendingRequest();
 
@@ -391,16 +485,20 @@ class Response
 
     /**
      * Determine if the response indicates a client error occurred.
+     *
+     * @return bool
      */
-    public function clientError(): bool
+    public function clientError()
     {
         return $this->status() >= 400 && $this->status() < 500;
     }
 
     /**
      * Determine if the response indicates a server error occurred.
+     *
+     * @return bool
      */
-    public function serverError(): bool
+    public function serverError()
     {
         return $this->status() >= 500;
     }
@@ -411,7 +509,7 @@ class Response
      * @param callable($this): (void) $callback
      * @return $this
      */
-    public function onError(callable $callback): static
+    public function onError(callable $callback)
     {
         if ($this->failed()) {
             $callback($this);
@@ -422,8 +520,10 @@ class Response
 
     /**
      * Determine if the response should throw a request exception.
+     *
+     * @return bool
      */
-    public function shouldThrowRequestException(): bool
+    public function shouldThrowRequestException()
     {
         $pendingRequest = $this->getPendingRequest();
 
@@ -432,8 +532,10 @@ class Response
 
     /**
      * Create an exception if a server or client error occurred.
+     *
+     * @return ?Exception
      */
-    public function toException(): ?Throwable
+    public function toException()
     {
         if (! $this->shouldThrowRequestException()) {
             return null;
@@ -444,8 +546,10 @@ class Response
 
     /**
      * Create the request exception
+     *
+     * @return Exception
      */
-    protected function createException(): Throwable
+    protected function createException()
     {
         $pendingRequest = $this->getPendingRequest();
         $senderException = $this->getSenderException();
@@ -453,9 +557,9 @@ class Response
         // We'll first check if the user has defined their own exception handlers.
         // We'll prioritise the request over the connector.
 
-        $exception = $pendingRequest->getRequest()->getRequestException($this, $senderException) ?? $pendingRequest->getConnector()->getRequestException($this, $senderException);
+        $exception = $pendingRequest->getRequest()->getRequestException($this, $senderException) ?: $pendingRequest->getConnector()->getRequestException($this, $senderException);
 
-        if ($exception instanceof Throwable) {
+        if ($exception instanceof Exception) {
             return $exception;
         }
 
@@ -468,9 +572,9 @@ class Response
      * Throw an exception if a server or client error occurred.
      *
      * @return $this
-     * @throws \Throwable
+     * @throws Exception
      */
-    public function throw(): static
+    public function throwException()
     {
         if ($this->shouldThrowRequestException()) {
             throw $this->toException();
@@ -482,9 +586,11 @@ class Response
     /**
      * Get a header from the response.
      *
+     * @param string $header
+     *
      * @return string|array<array-key, mixed>|null
      */
-    public function header(string $header): string|array|null
+    public function header($header)
     {
         return $this->headers()->get($header);
     }
@@ -496,7 +602,7 @@ class Response
      *
      * @return resource
      */
-    public function getRawStream(): mixed
+    public function getRawStream()
     {
         $temporaryResource = fopen('php://temp', 'wb+');
 
@@ -513,8 +619,11 @@ class Response
      * Save the body to a file
      *
      * @param string|resource $resourceOrPath
+     * @param bool $closeResource
+     *
+     * @return void
      */
-    public function saveBodyToFile(mixed $resourceOrPath, bool $closeResource = true): void
+    public function saveBodyToFile($resourceOrPath, $closeResource = true)
     {
         if (! is_string($resourceOrPath) && ! is_resource($resourceOrPath)) {
             throw new InvalidArgumentException('The $resourceOrPath argument must be either a file path or a resource.');
@@ -546,7 +655,7 @@ class Response
      *
      * @return $this
      */
-    public function close(): static
+    public function close()
     {
         $this->stream()->close();
 
@@ -555,32 +664,40 @@ class Response
 
     /**
      * Get the body of the response.
+     *
+     * @return string
      */
-    public function __toString(): string
+    public function __toString()
     {
         return $this->body();
     }
 
     /**
      * Check if the response has been cached
+     *
+     * @return bool
      */
-    public function isCached(): bool
+    public function isCached()
     {
         return $this->cached;
     }
 
     /**
      * Check if the response has been mocked
+     *
+     * @return bool
      */
-    public function isMocked(): bool
+    public function isMocked()
     {
         return $this->mocked;
     }
 
     /**
      * Check if the response has been simulated
+     *
+     * @return bool
      */
-    public function isFaked(): bool
+    public function isFaked()
     {
         return $this->isMocked() || $this->isCached();
     }
@@ -588,9 +705,11 @@ class Response
     /**
      * Set if a response has been cached or not.
      *
+     * @param bool $value
+     *
      * @return $this
      */
-    public function setCached(bool $value): static
+    public function setCached($value)
     {
         $this->cached = true;
 
@@ -600,9 +719,11 @@ class Response
     /**
      * Set if a response has been mocked or not.
      *
+     * @param string $value
+     *
      * @return $this
      */
-    public function setMocked(bool $value): static
+    public function setMocked($value)
     {
         $this->mocked = true;
 
@@ -614,7 +735,7 @@ class Response
      *
      * @return $this
      */
-    public function setFakeResponse(FakeResponse $fakeResponse): static
+    public function setFakeResponse(FakeResponse $fakeResponse)
     {
         $this->fakeResponse = $fakeResponse;
 
@@ -623,8 +744,10 @@ class Response
 
     /**
      * Get the simulated response payload if the response was simulated.
+     *
+     * @return FakeResponse|null
      */
-    public function getFakeResponse(): ?FakeResponse
+    public function getFakeResponse()
     {
         return $this->fakeResponse;
     }

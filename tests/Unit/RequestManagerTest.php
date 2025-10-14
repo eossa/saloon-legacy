@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 use Saloon\Http\Faking\MockClient;
 use Saloon\Managers\RequestManager;
 use Saloon\Http\Faking\MockResponse;

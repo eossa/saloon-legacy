@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Contracts\DataObjects;
 
 use Saloon\Http\Response;
@@ -13,10 +11,12 @@ interface WithResponse
      *
      * @return $this
      */
-    public function setResponse(Response $response): static;
+    public function setResponse(Response $response);
 
     /**
      * Get the response on the data object.
+     *
+     * @return Response
      */
-    public function getResponse(): Response;
+    public function getResponse();
 }

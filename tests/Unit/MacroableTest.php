@@ -1,112 +1,136 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Unit;
 
 use BadMethodCallException;
+use PHPUnit\Framework\TestCase;
 use Saloon\Traits\Macroable;
 
-beforeEach(function () {
-    $this->macroableClass = new class() {
-        private $privateVariable = 'privateValue';
+class MacroableTest extends TestCase
+{
+    protected $macroableClass;
 
-        use Macroable;
+    protected function setUp()
+    {
+        $this->macroableClass = new MacroableTestClass();
+    }
 
-        private static function getPrivateStatic()
-        {
-            return 'privateStaticValue';
-        }
-    };
-});
-
-test('a new macro can be registered and called', function () {
-    $this->macroableClass::macro('newMethod', function () {
-        return 'newValue';
-    });
-
-    $this->assertEquals('newValue', $this->macroableClass->newMethod());
-});
-
-test('a new macro can be registered and called statically', function () {
-    $this->macroableClass::macro('newMethod', function () {
-        return 'newValue';
-    });
-
-    $this->assertEquals('newValue', $this->macroableClass::newMethod());
-});
-
-test('a class can be registered as a new macro and be invoked', function () {
-    $this->macroableClass::macro('newMethod', new class() {
-        public function __invoke()
-        {
+    public function testANewMacroCanBeRegisteredAndCalled()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'newMethod', function () {
             return 'newValue';
-        }
-    });
+        });
 
-    $this->assertEquals('newValue', $this->macroableClass->newMethod());
-    $this->assertEquals('newValue', $this->macroableClass::newMethod());
-});
+        $this->assertEquals('newValue', $this->macroableClass->newMethod());
+    }
 
-test('it passes parameters correctly', function () {
-    $this->macroableClass::macro('concatenate', function (...$strings) {
-        return implode('-', $strings);
-    });
+    public function testANewMacroCanBeRegisteredAndCalledStatically()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'newMethod', function () {
+            return 'newValue';
+        });
 
-    $this->assertEquals('one-two-three', $this->macroableClass->concatenate('one', 'two', 'three'));
-});
+        $this->assertEquals('newValue', call_user_func([get_class($this->macroableClass), 'newMethod']));
+    }
 
-test('registered methods are bound to the class', function () {
-    $this->macroableClass::macro('newMethod', function () {
-        return $this->privateVariable;
-    });
+    public function testAClassCanBeRegisteredAsANewMacroAndBeInvoked()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'newMethod', new MacroableInvokableClass());
 
-    $this->assertEquals('privateValue', $this->macroableClass->newMethod());
-});
+        $this->assertEquals('newValue', $this->macroableClass->newMethod());
+        $this->assertEquals('newValue', call_user_func([get_class($this->macroableClass), 'newMethod']));
+    }
 
-test('it can work on static methods', function () {
-    $this->macroableClass::macro('testStatic', function () {
-        return $this::getPrivateStatic();
-    });
+    public function testItPassesParametersCorrectly()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'concatenate', function () {
+            $strings = func_get_args();
+            return implode('-', $strings);
+        });
 
-    $this->assertEquals('privateStaticValue', $this->macroableClass->testStatic());
-});
+        $this->assertEquals('one-two-three', $this->macroableClass->concatenate('one', 'two', 'three'));
+    }
 
-test('it can mixin all public methods from another class', function () {
-    $mixinClass = new class() {
-        private function secretMixinMethod()
-        {
-            return 'secret';
-        }
+    public function testRegisteredMethodsAreBoundToTheClass()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'newMethod', function () {
+            return $this->privateVariable;
+        });
 
-        public function mixinMethodA()
-        {
-            return function ($value) {
-                return $this->mixinMethodB($value);
-            };
-        }
+        $this->assertEquals('privateValue', $this->macroableClass->newMethod());
+    }
 
-        public function mixinMethodB()
-        {
-            return function ($value) {
-                return $this->privateVariable.'-'.$value;
-            };
-        }
-    };
+    public function testItCanWorkOnStaticMethods()
+    {
+        call_user_func([$this->macroableClass, 'macro'], 'testStatic', function () {
+            return $this::getPrivateStatic();
+        });
 
-    $this->macroableClass::mixin($mixinClass);
+        $this->assertEquals('privateStaticValue', $this->macroableClass->testStatic());
+    }
 
-    $this->assertEquals('privateValue-test', $this->macroableClass->mixinMethodA('test'));
-});
+    public function testItCanMixinAllPublicMethodsFromAnotherClass()
+    {
+        $mixinClass = new MacroableMixinClass();
 
-test('it will throw an exception if a method does not exist', function () {
-    $this->expectException(BadMethodCallException::class);
+        call_user_func([$this->macroableClass, 'mixin'], $mixinClass);
 
-    $this->macroableClass->nonExistingMethod();
-});
+        $this->assertEquals('privateValue-test', $this->macroableClass->mixinMethodA('test'));
+    }
 
-test('it will throw an exception if a static method does not exist', function () {
-    $this->expectException(BadMethodCallException::class);
+    public function testItWillThrowAnExceptionIfAMethodDoesNotExist()
+    {
+        $this->expectException(BadMethodCallException::class);
 
-    $this->macroableClass::nonExistingMethod();
-});
+        $this->macroableClass->nonExistingMethod();
+    }
+
+    public function testItWillThrowAnExceptionIfAStaticMethodDoesNotExist()
+    {
+        $this->expectException(BadMethodCallException::class);
+
+        call_user_func([get_class($this->macroableClass), 'nonExistingMethod']);
+    }
+}
+
+class MacroableTestClass
+{
+    private $privateVariable = 'privateValue';
+
+    use Macroable;
+
+    private static function getPrivateStatic()
+    {
+        return 'privateStaticValue';
+    }
+}
+
+class MacroableInvokableClass
+{
+    public function __invoke()
+    {
+        return 'newValue';
+    }
+}
+
+class MacroableMixinClass
+{
+    private function secretMixinMethod()
+    {
+        return 'secret';
+    }
+
+    public function mixinMethodA()
+    {
+        return function ($value) {
+            return $this->mixinMethodB($value);
+        };
+    }
+
+    public function mixinMethodB()
+    {
+        return function ($value) {
+            return $this->privateVariable . '-' . $value;
+        };
+    }
+}

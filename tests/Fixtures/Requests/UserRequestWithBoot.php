@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,32 +13,41 @@ class UserRequestWithBoot extends Request
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = WithBootConnector::class;
+    protected $connector = WithBootConnector::class;
+    protected $farewell = 'Ride on, cowboy.';
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    public function boot(Request $request): void
+    /**
+     * @return void
+     */
+    public function boot(Request $request)
     {
         $this->addHeader('X-Request-Boot-Header', 'Yee-haw!');
         $this->addHeader('X-Request-Boot-With-Data', $request->farewell);
     }
 
-    
-    public function __construct(protected string $farewell = 'Ride on, cowboy.')
+
+    /**
+     * @param string $farewell
+     */
+    public function __construct($farewell = 'Ride on, cowboy.')
     {
-        //
+        $this->farewell = $farewell;
     }
 }

@@ -1,82 +1,89 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\RequestProperties;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\ArrayStore;
 use Saloon\Tests\Fixtures\Requests\QueryParameterRequest;
 use Saloon\Tests\Fixtures\Connectors\QueryParameterConnector;
 
-test('default query parameters are merged in from a request', function () {
-    $request = new QueryParameterRequest();
+class QueryTest extends TestCase
+{
+    public function testDefaultQueryParametersAreMergedInFromARequest()
+    {
+        $request = new QueryParameterRequest();
 
-    $query = $request->query();
+        $query = $request->query();
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
-    expect($query)->toEqual(new ArrayStore(['per_page' => 100]));
-});
+        $this->assertInstanceOf(ArrayStore::class, $query);
+        $this->assertEquals(new ArrayStore(['per_page' => 100]), $query);
+    }
 
-test('query parameters can be managed on a request', function () {
-    $request = new QueryParameterRequest();
+    public function testQueryParametersCanBeManagedOnARequest()
+    {
+        $request = new QueryParameterRequest();
 
-    $query = $request->query()->add('page', 1);
+        $query = $request->query()->add('page', 1);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    $query = $request->query()->merge(['search' => 'Sam', 'category' => 'Cowboy'], ['per_page' => 200]);
+        $query = $request->query()->merge(['search' => 'Sam', 'category' => 'Cowboy'], ['per_page' => 200]);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    $query = $request->query()->remove('category');
+        $query = $request->query()->remove('category');
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    expect($query->all())->toEqual([
-        'per_page' => 200,
-        'page' => 1,
-        'search' => 'Sam',
-    ]);
+        $this->assertEquals([
+            'per_page' => 200,
+            'page' => 1,
+            'search' => 'Sam',
+        ], $query->all());
 
-    expect($query->get('page'))->toEqual(1);
+        $this->assertEquals(1, $query->get('page'));
 
-    $query = $request->query()->set(['debug' => true]);
+        $query = $request->query()->set(['debug' => true]);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    expect($request->query()->all())->toEqual(['debug' => true]);
+        $this->assertEquals(['debug' => true], $request->query()->all());
 
-    expect($request->query()->isEmpty())->toBeFalse();
-    expect($request->query()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($request->query()->isEmpty());
+        $this->assertTrue($request->query()->isNotEmpty());
+    }
 
-test('query parameters can be managed on a connector', function () {
-    $connector = new QueryParameterConnector();
+    public function testQueryParametersCanBeManagedOnAConnector()
+    {
+        $connector = new QueryParameterConnector();
 
-    $query = $connector->query()->add('page', 1);
+        $query = $connector->query()->add('page', 1);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    $query = $connector->query()->merge(['search' => 'Sam', 'category' => 'Cowboy'], ['sort' => 'last_name']);
+        $query = $connector->query()->merge(['search' => 'Sam', 'category' => 'Cowboy'], ['sort' => 'last_name']);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    $query = $connector->query()->remove('category');
+        $query = $connector->query()->remove('category');
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    expect($query->all())->toEqual([
-        'sort' => 'last_name',
-        'page' => 1,
-        'search' => 'Sam',
-    ]);
+        $this->assertEquals([
+            'sort' => 'last_name',
+            'page' => 1,
+            'search' => 'Sam',
+        ], $query->all());
 
-    expect($query->get('page'))->toEqual(1);
+        $this->assertEquals(1, $query->get('page'));
 
-    $query = $connector->query()->set(['debug' => true]);
+        $query = $connector->query()->set(['debug' => true]);
 
-    expect($query)->toBeInstanceOf(ArrayStore::class);
+        $this->assertInstanceOf(ArrayStore::class, $query);
 
-    expect($connector->query()->all())->toEqual(['debug' => true]);
+        $this->assertEquals(['debug' => true], $connector->query()->all());
 
-    expect($connector->query()->isEmpty())->toBeFalse();
-    expect($connector->query()->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($connector->query()->isEmpty());
+        $this->assertTrue($connector->query()->isNotEmpty());
+    }
+}

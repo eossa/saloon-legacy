@@ -1,15 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Connector;
 
+use Exception;
 use LogicException;
+use Saloon\Exceptions\DuplicatePipeNameException;
+use Saloon\Exceptions\PendingRequestException;
+use Saloon\Http\Connector;
 use Saloon\Http\Pool;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
 use GuzzleHttp\Promise\Utils;
-use GuzzleHttp\Promise\Promise;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Faking\MockClient;
 use GuzzleHttp\Promise\PromiseInterface;
@@ -24,20 +25,30 @@ trait SendsRequests
     /**
      * Send a request synchronously
      *
-     * @param callable(\Throwable, \Saloon\Http\Request): (bool)|null $handleRetry
+     * @param MockClient|null $mockClient
+     * @param callable(Exception, Request): (bool)|null $handleRetry
+     *
+     * @return Response
+     *
+     * @throws FatalRequestException
+     * @throws RequestException
+     * @throws PendingRequestException
+     * @throws Exception
      */
-    public function send(Request $request, ?MockClient $mockClient = null, ?callable $handleRetry = null): Response
+    public function send(Request $request, MockClient $mockClient = null, callable $handleRetry = null)
     {
         if (is_null($handleRetry)) {
-            $handleRetry = static fn (): bool => true;
+            $handleRetry = static function () {
+                return true;
+            };
         }
 
         $attempts = 0;
 
-        $maxTries = $request->tries ?? $this->tries ?? 1;
-        $retryInterval = $request->retryInterval ?? $this->retryInterval ?? 0;
-        $throwOnMaxTries = $request->throwOnMaxTries ?? $this->throwOnMaxTries ?? true;
-        $useExponentialBackoff = $request->useExponentialBackoff ?? $this->useExponentialBackoff ?? false;
+        $maxTries = isset($request->tries) ? $request->tries : (isset($this->tries) ? $this->tries : 1);
+        $retryInterval = isset($request->retryInterval) ? $request->retryInterval : (isset($this->retryInterval) ? $this->retryInterval : 0);
+        $throwOnMaxTries = isset($request->throwOnMaxTries) ? $request->throwOnMaxTries : (isset($this->throwOnMaxTries) ? $this->throwOnMaxTries : true);
+        $useExponentialBackoff = isset($request->useExponentialBackoff) ? $request->useExponentialBackoff : (isset($this->useExponentialBackoff) ? $this->useExponentialBackoff : false);
 
         if ($maxTries <= 0) {
             $maxTries = 1;
@@ -82,40 +93,33 @@ trait SendsRequests
                 // This will then force our catch handler to retry the request.
 
                 if ($maxTries > 1) {
-                    $response->throw();
+                    $response->throwException();
                 }
 
                 return $response;
-            } catch (FatalRequestException|RequestException $exception) {
-                // We'll attempt to get the response from the exception. We'll only be able
-                // to do this if the exception was a "RequestException".
-
-                $exceptionResponse = $exception instanceof RequestException ? $exception->getResponse() : null;
-
-                // If the exception is a FatalRequestException, we'll execute the fatal pipeline
-                if ($exception instanceof FatalRequestException) {
-                    $exception->getPendingRequest()->executeFatalPipeline($exception);
+            } catch (FatalRequestException $exception) {
+                $resultResponse = $this->handleExceptionOnSend(
+                    $attempts,
+                    $maxTries,
+                    $throwOnMaxTries,
+                    $exception,
+                    $handleRetry,
+                    $request
+                );
+                if (!is_null($resultResponse)) {
+                    return $resultResponse;
                 }
-
-                // If we've reached our max attempts - we won't try again, but we'll either
-                // return the last response made or just throw an exception.
-
-                if ($attempts === $maxTries) {
-                    return isset($exceptionResponse) && $throwOnMaxTries === false ? $exceptionResponse : throw $exception;
-                }
-
-                // Now we'll run the "handleRetry" method on both the connector and the request.
-                // This method will return a boolean. If just one of the objects returns false
-                // then we won't handle the retry.
-
-                $allowRetry = $handleRetry($exception, $request)
-                    && $request->handleRetry($exception, $request)
-                    && $this->handleRetry($exception, $request);
-
-                // If we cannot retry we will simply return the response or throw the exception.
-
-                if ($allowRetry === false) {
-                    return isset($exceptionResponse) && $throwOnMaxTries === false ? $exceptionResponse : throw $exception;
+            } catch (RequestException $exception) {
+                $resultResponse = $this->handleExceptionOnSend(
+                    $attempts,
+                    $maxTries,
+                    $throwOnMaxTries,
+                    $exception,
+                    $handleRetry,
+                    $request
+                );
+                if (!is_null($resultResponse)) {
+                    return $resultResponse;
                 }
             }
         }
@@ -124,9 +128,66 @@ trait SendsRequests
     }
 
     /**
-     * Send a request asynchronously
+     * @param int $attempts
+     * @param ?int $maxTries
+     * @param ?bool $throwOnMaxTries
+     * @param FatalRequestException|RequestException $exception
+     * @param callable(Exception, Request): (bool)|null $handleRetry
+     * @param Request $request
+     *
+     * @return Response|void
+     *
+     * @throws FatalRequestException
+     * @throws RequestException
      */
-    public function sendAsync(Request $request, ?MockClient $mockClient = null): PromiseInterface
+    private function handleExceptionOnSend($attempts, $maxTries, $throwOnMaxTries, $exception, $handleRetry, Request $request)
+    {
+        // We'll attempt to get the response from the exception. We'll only be able
+        // to do this if the exception was a "RequestException".
+        $exceptionResponse = $exception instanceof RequestException ? $exception->getResponse() : null;
+
+        // If the exception is a FatalRequestException, we'll execute the fatal pipeline
+        if ($exception instanceof FatalRequestException) {
+            $exception->getPendingRequest()->executeFatalPipeline($exception);
+        }
+
+        // If we've reached our max attempts - we won't try again, but we'll either
+        // return the last response made or just throw an exception.
+
+        if ($attempts === $maxTries) {
+            if (isset($exceptionResponse) && $throwOnMaxTries === false) {
+                return $exceptionResponse;
+            }
+            throw $exception;
+        }
+
+        // Now we'll run the "handleRetry" method on both the connector and the request.
+        // This method will return a boolean. If just one of the objects returns false
+        // then we won't handle the retry.
+
+        $allowRetry = $handleRetry($exception, $request)
+            && $request->handleRetry($exception, $request)
+            && $this->handleRetry($exception, $request);
+
+        // If we cannot retry we will simply return the response or throw the exception.
+
+        if ($allowRetry === false) {
+            if (isset($exceptionResponse) && $throwOnMaxTries === false) {
+                return $exceptionResponse;
+            }
+            throw $exception;
+        }
+    }
+
+    /**
+     * Send a request asynchronously
+     *
+     * @param Request $request
+     * @param MockClient|null $mockClient
+     *
+     * @return PromiseInterface
+     */
+    public function sendAsync(Request $request, MockClient $mockClient = null)
     {
         $sender = $this->sender();
 
@@ -150,7 +211,9 @@ trait SendsRequests
                 $requestPromise = $sender->sendAsync($pendingRequest);
             }
 
-            $requestPromise->then(fn (Response $response) => $pendingRequest->executeResponsePipeline($response));
+            $requestPromise->then(function (Response $response) use ($pendingRequest) {
+                return $pendingRequest->executeResponsePipeline($response);
+            });
 
             return $requestPromise;
         });
@@ -159,12 +222,30 @@ trait SendsRequests
     /**
      * Send a synchronous request and retry if it fails
      *
-     * @deprecated This method will be removed in Saloon v4. Please refer to the documentation to see connector or request-based retry functionality.
+     * @param int $tries
+     * @param int $interval
+     * @param callable(Exception, Request): (bool)|null $handleRetry
+     * @param bool|true $throw
+     * @param MockClient|null $mockClient
+     * @param false|bool $useExponentialBackoff
      *
-     * @param callable(\Throwable, \Saloon\Http\Request): (bool)|null $handleRetry
+     * @return Response
+     *
+     * @throws FatalRequestException
+     * @throws PendingRequestException
+     * @throws RequestException
+     *
+     * @deprecated This method will be removed in Saloon v4. Please refer to the documentation to see connector or request-based retry functionality.
      */
-    public function sendAndRetry(Request $request, int $tries, int $interval = 0, ?callable $handleRetry = null, bool $throw = true, ?MockClient $mockClient = null, bool $useExponentialBackoff = false): Response
-    {
+    public function sendAndRetry(
+        Request $request,
+        $tries,
+        $interval = 0,
+        callable $handleRetry = null,
+        $throw = true,
+        MockClient $mockClient = null,
+        $useExponentialBackoff = false
+    ) {
         $request->tries = $tries;
         $request->retryInterval = $interval;
         $request->throwOnMaxTries = $throw;
@@ -175,8 +256,13 @@ trait SendsRequests
 
     /**
      * Create a new PendingRequest
+     *
+     * @param Request $request
+     * @param MockClient|null $mockClient
+     *
+     * @return PendingRequest
      */
-    public function createPendingRequest(Request $request, ?MockClient $mockClient = null): PendingRequest
+    public function createPendingRequest(Request $request, MockClient $mockClient = null)
     {
         return new PendingRequest($this, $request, $mockClient);
     }
@@ -184,13 +270,19 @@ trait SendsRequests
     /**
      * Create a request pool
      *
-     * @param iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request>|callable(\Saloon\Http\Connector): iterable<\GuzzleHttp\Promise\PromiseInterface|\Saloon\Http\Request> $requests
+     * @param iterable<PromiseInterface|Request>|callable(Connector): iterable<PromiseInterface|Request> $requests
      * @param int|callable(int $pendingRequests): (int) $concurrency
-     * @param callable(\Saloon\Http\Response, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void)|null $responseHandler
-     * @param callable(mixed $reason, array-key $key, \GuzzleHttp\Promise\PromiseInterface $poolAggregate): (void)|null $exceptionHandler
+     * @param callable(Response, array-key $key, PromiseInterface $poolAggregate): (void)|null $responseHandler
+     * @param callable(mixed $reason, array-key $key, PromiseInterface $poolAggregate): (void)|null $exceptionHandler
+     *
+     * @return Pool
      */
-    public function pool(iterable|callable $requests = [], int|callable $concurrency = 5, callable|null $responseHandler = null, callable|null $exceptionHandler = null): Pool
-    {
+    public function pool(
+        $requests = [],
+        $concurrency = 5,
+        callable $responseHandler = null,
+        callable $exceptionHandler = null
+    ) {
         return new Pool($this, $requests, $concurrency, $responseHandler, $exceptionHandler);
     }
 }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\RequestProperties;
 
 use Saloon\Repositories\ArrayStore;
@@ -11,15 +9,22 @@ trait HasConfig
 {
     /**
      * Request Config
+     *
+     * @var ArrayStoreContract
      */
-    protected ArrayStoreContract $config;
+    protected $config;
 
     /**
      * Access the config
+     *
+     * @return ArrayStoreContract
      */
-    public function config(): ArrayStoreContract
+    public function config()
     {
-        return $this->config ??= new ArrayStore($this->defaultConfig());
+        if (isset($this->config)) {
+            return $this->config;
+        }
+        return $this->config = new ArrayStore($this->defaultConfig());
     }
 
     /**
@@ -27,7 +32,7 @@ trait HasConfig
      *
      * @return array<string, mixed>
      */
-    protected function defaultConfig(): array
+    protected function defaultConfig()
     {
         return [];
     }

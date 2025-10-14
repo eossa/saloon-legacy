@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -13,8 +11,10 @@ class NoConfigClientCredentialsConnector extends Connector
 
     /**
      * Define the base URL.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return 'https://oauth.saloon.dev';
     }

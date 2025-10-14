@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Contracts;
 
 use Saloon\Http\Response;
@@ -13,16 +11,22 @@ interface Sender
 {
     /**
      * Get the factory collection
+     *
+     * @return FactoryCollection
      */
-    public function getFactoryCollection(): FactoryCollection;
+    public function getFactoryCollection();
 
     /**
      * Send the request synchronously
+     *
+     * @return Response
      */
-    public function send(PendingRequest $pendingRequest): Response;
+    public function send(PendingRequest $pendingRequest);
 
     /**
      * Send the request asynchronously
+     *
+     * @return PromiseInterface
      */
-    public function sendAsync(PendingRequest $pendingRequest): PromiseInterface;
+    public function sendAsync(PendingRequest $pendingRequest);
 }

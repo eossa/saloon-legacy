@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature\Oauth2;
 
+use DateTimeImmutable;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
 use Saloon\Http\Faking\MockClient;
@@ -13,214 +14,230 @@ use Saloon\Tests\Fixtures\Connectors\NoConfigClientCredentialsConnector;
 use Saloon\Tests\Fixtures\Connectors\ClientCredentialsBasicAuthConnector;
 use Saloon\Tests\Fixtures\Connectors\CustomRequestClientCredentialsConnector;
 use Saloon\Tests\Fixtures\Requests\OAuth\CustomClientCredentialsAccessTokenRequest;
+use PHPUnit\Framework\TestCase;
 
-test('you can get the authenticator from the connector', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+class ClientCredentialsFlowConnectorTest extends TestCase
+{
+    public function testYouCanGetTheAuthenticatorFromTheConnector()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken();
+        $authenticator = $connector->getAccessToken();
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toBeNull();
-    expect($authenticator->isRefreshable())->toBeFalse();
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertNull($authenticator->getRefreshToken());
+        $this->assertFalse($authenticator->isRefreshable());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->body()->all())->toEqual([
-        'grant_type' => 'client_credentials',
-        'client_id' => 'client-id',
-        'client_secret' => 'client-secret',
-        'scope' => '',
-    ]);
-});
+        $this->assertEquals([
+            'grant_type' => 'client_credentials',
+            'client_id' => 'client-id',
+            'client_secret' => 'client-secret',
+            'scope' => '',
+        ], $mockClient->getLastPendingRequest()->body()->all());
+    }
 
-test('you can get the response instead of the authenticator', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testYouCanGetTheResponseInsteadOfTheAuthenticator()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $response = $connector->getAccessToken(returnResponse: true);
+        $response = $connector->getAccessToken([], ' ', true);
 
-    expect($response)->toBeInstanceOf(Response::class);
+        $this->assertInstanceOf(Response::class, $response);
 
-    expect($response->json())->toEqual([
-        'access_token' => 'access',
-        'expires_in' => 3600,
-    ]);
-});
+        $this->assertEquals([
+            'access_token' => 'access',
+            'expires_in' => 3600,
+        ], $response->json());
+    }
 
-test('you can tap into the token request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testYouCanTapIntoTheTokenRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken(requestModifier: function (Request $request) {
-        $request->query()->add('yee', 'haw');
-    });
+        $authenticator = $connector->getAccessToken([], ' ', false, function (Request $request) {
+            $request->query()->add('yee', 'haw');
+        });
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toBeNull();
-    expect($authenticator->isRefreshable())->toBeFalse();
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertNull($authenticator->getRefreshToken());
+        $this->assertFalse($authenticator->isRefreshable());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->query()->all())->toEqual(['yee' => 'haw']);
-});
+        $this->assertEquals(['yee' => 'haw'], $mockClient->getLastPendingRequest()->query()->all());
+    }
 
-test('you can send scopes with the token request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testYouCanSendScopesWithTheTokenRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing']);
+        $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing']);
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->body()->all())->toEqual([
-        'grant_type' => 'client_credentials',
-        'client_id' => 'client-id',
-        'client_secret' => 'client-secret',
-        'scope' => 'offline_access clients billing',
-    ]);
-});
+        $this->assertEquals([
+            'grant_type' => 'client_credentials',
+            'client_id' => 'client-id',
+            'client_secret' => 'client-secret',
+            'scope' => 'offline_access clients billing',
+        ], $mockClient->getLastPendingRequest()->body()->all());
+    }
 
-test('default scopes on the oauth config will be merged in with the scopes on the token request', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testDefaultScopesOnTheOauthConfigWillBeMergedInWithTheScopesOnTheTokenRequest()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $connector->oauthConfig()->setDefaultScopes([
-        'compliance',
-    ]);
+        $connector->oauthConfig()->setDefaultScopes([
+            'compliance',
+        ]);
 
-    $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing']);
+        $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing']);
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->body()->all())->toEqual([
-        'grant_type' => 'client_credentials',
-        'client_id' => 'client-id',
-        'client_secret' => 'client-secret',
-        'scope' => 'compliance offline_access clients billing',
-    ]);
-});
+        $this->assertEquals([
+            'grant_type' => 'client_credentials',
+            'client_id' => 'client-id',
+            'client_secret' => 'client-secret',
+            'scope' => 'compliance offline_access clients billing',
+        ], $mockClient->getLastPendingRequest()->body()->all());
+    }
 
-test('the scope separator can be customised', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testTheScopeSeparatorCanBeCustomised()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $connector->oauthConfig()->setDefaultScopes([
-        'compliance',
-    ]);
+        $connector->oauthConfig()->setDefaultScopes([
+            'compliance',
+        ]);
 
-    $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing'], '+');
+        $authenticator = $connector->getAccessToken(['offline_access', 'clients', 'billing'], '+');
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->body()->all())->toEqual([
-        'grant_type' => 'client_credentials',
-        'client_id' => 'client-id',
-        'client_secret' => 'client-secret',
-        'scope' => 'compliance+offline_access+clients+billing',
-    ]);
-});
+        $this->assertEquals([
+            'grant_type' => 'client_credentials',
+            'client_id' => 'client-id',
+            'client_secret' => 'client-secret',
+            'scope' => 'compliance+offline_access+clients+billing',
+        ], $mockClient->getLastPendingRequest()->body()->all());
+    }
 
-test('if you attempt to use the client credentials flow without a client id it will throw an exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testIfYouAttemptToUseTheClientCredentialsFlowWithoutAClientIdItWillThrowAnException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new NoConfigClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new NoConfigClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $this->expectException(OAuthConfigValidationException::class);
-    $this->expectExceptionMessage('The Client ID is empty or has not been provided.');
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client ID is empty or has not been provided.');
 
-    $connector->getAccessToken();
-});
+        $connector->getAccessToken();
+    }
 
-test('if you attempt to use the client credentials flow without a secret it will throw an exception', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testIfYouAttemptToUseTheClientCredentialsFlowWithoutASecretItWillThrowAnException()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new NoConfigClientCredentialsConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new NoConfigClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $connector->oauthConfig()->setClientId('hello');
+        $connector->oauthConfig()->setClientId('hello');
 
-    $this->expectException(OAuthConfigValidationException::class);
-    $this->expectExceptionMessage('The Client Secret is empty or has not been provided.');
+        $this->expectException(OAuthConfigValidationException::class);
+        $this->expectExceptionMessage('The Client Secret is empty or has not been provided.');
 
-    $connector->getAccessToken();
-});
+        $connector->getAccessToken();
+    }
 
-test('on the connector you can overwrite the getAccessToken request', function () {
-    $mockClient = new MockClient([
-        CustomClientCredentialsAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testOnTheConnectorYouCanOverwriteTheGetAccessTokenRequest()
+    {
+        $mockClient = new MockClient([
+            CustomClientCredentialsAccessTokenRequest::class => MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new CustomRequestClientCredentialsConnector();
-    $connector->withMockClient($mockClient);
+        $connector = new CustomRequestClientCredentialsConnector();
+        $connector->withMockClient($mockClient);
 
-    $accessTokenResponse = $connector->getAccessToken(returnResponse: true);
+        $accessTokenResponse = $connector->getAccessToken([], ' ', true);
 
-    expect($accessTokenResponse->getRequest())->toBeInstanceOf(CustomClientCredentialsAccessTokenRequest::class);
-});
+        $this->assertInstanceOf(CustomClientCredentialsAccessTokenRequest::class, $accessTokenResponse->getRequest());
+    }
 
-test('the client credentials grant can use basic auth', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
-    ]);
+    public function testTheClientCredentialsGrantCanUseBasicAuth()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(['access_token' => 'access', 'expires_in' => 3600], 200),
+        ]);
 
-    $connector = new ClientCredentialsBasicAuthConnector;
-    $connector->withMockClient($mockClient);
+        $connector = new ClientCredentialsBasicAuthConnector();
+        $connector->withMockClient($mockClient);
 
-    $authenticator = $connector->getAccessToken();
+        $authenticator = $connector->getAccessToken();
 
-    expect($authenticator)->toBeInstanceOf(AccessTokenAuthenticator::class);
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toBeNull();
-    expect($authenticator->isRefreshable())->toBeFalse();
-    expect($authenticator->getExpiresAt())->toBeInstanceOf(DateTimeImmutable::class);
+        $this->assertInstanceOf(AccessTokenAuthenticator::class, $authenticator);
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertNull($authenticator->getRefreshToken());
+        $this->assertFalse($authenticator->isRefreshable());
+        $this->assertInstanceOf(DateTimeImmutable::class, $authenticator->getExpiresAt());
 
-    $mockClient->assertSentCount(1);
+        $mockClient->assertSentCount(1);
 
-    expect($mockClient->getLastPendingRequest()->body()->all())->toEqual([
-        'grant_type' => 'client_credentials',
-        'scope' => '',
-    ]);
+        $this->assertEquals([
+            'grant_type' => 'client_credentials',
+            'scope' => '',
+        ], $mockClient->getLastPendingRequest()->body()->all());
 
-    expect($mockClient->getLastPendingRequest()->headers()->get('Authorization'))
-        ->toEqual('Basic ' . base64_encode('client-id:client-secret'));
-});
+        $this->assertEquals(
+            'Basic ' . base64_encode('client-id:client-secret'),
+            $mockClient->getLastPendingRequest()->headers()->get('Authorization')
+        );
+    }
+}

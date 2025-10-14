@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -15,17 +13,21 @@ class ArraySenderDefaultMethodConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
 
     /**
      * Default Sender
+     *
+     * @return Sender
      */
-    protected function defaultSender(): Sender
+    protected function defaultSender()
     {
-        return new ArraySender;
+        return new ArraySender();
     }
 }

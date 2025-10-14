@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
@@ -17,142 +18,157 @@ use Saloon\Tests\Fixtures\Requests\DefaultAuthenticatorRequest;
 use Saloon\Tests\Fixtures\Connectors\DefaultAuthenticatorConnector;
 use Saloon\Tests\Fixtures\Requests\DefaultPizzaAuthenticatorRequest;
 
-test('you can add an authenticator to a request and it will be applied', function () {
-    $request = new DefaultAuthenticatorRequest();
-    $pendingRequest = connector()->createPendingRequest($request);
+class AuthenticatorTest extends TestCase
+{
+    public function testYouCanAddAnAuthenticatorToARequestAndItWillBeApplied()
+    {
+        $request = new DefaultAuthenticatorRequest();
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer yee-haw-request');
-});
+        $this->assertEquals('Bearer yee-haw-request', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can provide a default authenticator on the connector', function () {
-    $request = new UserRequest();
-    $connector = new DefaultAuthenticatorConnector;
+    public function testYouCanProvideADefaultAuthenticatorOnTheConnector()
+    {
+        $request = new UserRequest();
+        $connector = new DefaultAuthenticatorConnector();
 
-    $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer yee-haw-connector');
-});
+        $this->assertEquals('Bearer yee-haw-connector', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can provide a default authenticator on the request and it takes priority over the connector', function () {
-    $request = new DefaultAuthenticatorRequest();
-    $connector = new DefaultAuthenticatorConnector;
+    public function testYouCanProvideADefaultAuthenticatorOnTheRequestAndItTakesPriorityOverTheConnector()
+    {
+        $request = new DefaultAuthenticatorRequest();
+        $connector = new DefaultAuthenticatorConnector();
 
-    $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer yee-haw-request');
-});
+        $this->assertEquals('Bearer yee-haw-request', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can provide an authenticator on the fly and it will take priority over all defaults', function () {
-    $request = new DefaultAuthenticatorRequest();
-    $connector = new DefaultAuthenticatorConnector;
+    public function testYouCanProvideAnAuthenticatorOnTheFlyAndItWillTakePriorityOverAllDefaults()
+    {
+        $request = new DefaultAuthenticatorRequest();
+        $connector = new DefaultAuthenticatorConnector();
 
-    $request->withTokenAuth('yee-haw-on-the-fly', 'PewPew');
+        $request->withTokenAuth('yee-haw-on-the-fly', 'PewPew');
 
-    $pendingRequest = $connector->createPendingRequest($request);
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('PewPew yee-haw-on-the-fly');
-});
+        $this->assertEquals('PewPew yee-haw-on-the-fly', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('the RequiresAuth trait will throw an exception if an authenticator is not found', function () {
-    $mockClient = new MockClient([
-        MockResponse::make(),
-    ]);
+    public function testTheRequiresAuthTraitWillThrowAnExceptionIfAnAuthenticatorIsNotFound()
+    {
+        $mockClient = new MockClient([
+            MockResponse::make(),
+        ]);
 
-    $this->expectException(MissingAuthenticatorException::class);
-    $this->expectExceptionMessage('The "Saloon\Tests\Fixtures\Requests\RequiresAuthRequest" request requires authentication.');
+        $this->expectException(MissingAuthenticatorException::class);
+        $this->expectExceptionMessage('The "Saloon\Tests\Fixtures\Requests\RequiresAuthRequest" request requires authentication.');
 
-    $request = new RequiresAuthRequest();
+        $request = new RequiresAuthRequest();
 
-    connector()->send($request, $mockClient);
-});
+        connector()->send($request, $mockClient);
+    }
 
-test('you can use your own authenticators', function () {
-    $request = new UserRequest();
-    $request->authenticate(new PizzaAuthenticator('Margherita', 'San Pellegrino'));
+    public function testYouCanUseYourOwnAuthenticators()
+    {
+        $request = new UserRequest();
+        $request->authenticate(new PizzaAuthenticator('Margherita', 'San Pellegrino'));
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    $headers = $pendingRequest->headers()->all();
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers['X-Pizza'])->toEqual('Margherita');
-    expect($headers['X-Drink'])->toEqual('San Pellegrino');
-    expect($pendingRequest->config()->get('debug'))->toBeTrue();
-});
+        $this->assertEquals('Margherita', $headers['X-Pizza']);
+        $this->assertEquals('San Pellegrino', $headers['X-Drink']);
+        $this->assertTrue($pendingRequest->config()->get('debug'));
+    }
 
-test('you can use your own authenticators as default', function () {
-    $request = new DefaultPizzaAuthenticatorRequest();
+    public function testYouCanUseYourOwnAuthenticatorsAsDefault()
+    {
+        $request = new DefaultPizzaAuthenticatorRequest();
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    $headers = $pendingRequest->headers()->all();
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers['X-Pizza'])->toEqual('BBQ Chicken');
-    expect($headers['X-Drink'])->toEqual('Lemonade');
-    expect($pendingRequest->config()->get('debug'))->toBeTrue();
-});
+        $this->assertEquals('BBQ Chicken', $headers['X-Pizza']);
+        $this->assertEquals('Lemonade', $headers['X-Drink']);
+        $this->assertTrue($pendingRequest->config()->get('debug'));
+    }
 
-test('you can customise the authenticator inside of the boot method', function () {
-    $request = new BootAuthenticatorRequest();
+    public function testYouCanCustomiseTheAuthenticatorInsideOfTheBootMethod()
+    {
+        $request = new BootAuthenticatorRequest();
 
-    expect($request->getAuthenticator())->toBeNull();
+        $this->assertNull($request->getAuthenticator());
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    expect($pendingRequest->getAuthenticator())->toEqual(new TokenAuthenticator('howdy-partner'));
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer howdy-partner');
-});
+        $this->assertEquals(new TokenAuthenticator('howdy-partner'), $pendingRequest->getAuthenticator());
+        $this->assertEquals('Bearer howdy-partner', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can customise the authenticator inside of plugins', function () {
-    $request = new AuthenticatorPluginRequest();
+    public function testYouCanCustomiseTheAuthenticatorInsideOfPlugins()
+    {
+        $request = new AuthenticatorPluginRequest();
 
-    expect($request->getAuthenticator())->toBeNull();
+        $this->assertNull($request->getAuthenticator());
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    expect($pendingRequest->getAuthenticator())->toEqual(new TokenAuthenticator('plugin-auth'));
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer plugin-auth');
-});
+        $this->assertEquals(new TokenAuthenticator('plugin-auth'), $pendingRequest->getAuthenticator());
+        $this->assertEquals('Bearer plugin-auth', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can customise the authenticator inside of a middleware pipeline', function () {
-    $request = new UserRequest;
+    public function testYouCanCustomiseTheAuthenticatorInsideOfAMiddlewarePipeline()
+    {
+        $request = new UserRequest();
 
-    expect($request->getAuthenticator())->toBeNull();
+        $this->assertNull($request->getAuthenticator());
 
-    $request->middleware()
-        ->onRequest(function (PendingRequest $pendingRequest) {
-            $pendingRequest->withTokenAuth('ooh-this-is-cool');
+        $request->middleware()
+            ->onRequest(function (PendingRequest $pendingRequest) {
+                $pendingRequest->withTokenAuth('ooh-this-is-cool');
+            });
+
+        $pendingRequest = connector()->createPendingRequest($request);
+
+        $this->assertEquals(new TokenAuthenticator('ooh-this-is-cool'), $pendingRequest->getAuthenticator());
+        $this->assertEquals('Bearer ooh-this-is-cool', $pendingRequest->headers()->get('Authorization'));
+    }
+
+    public function testYouCanAddAnAuthenticatorInsideOfRequestMiddleware()
+    {
+        $request = new UserRequest();
+
+        $request->middleware()->onRequest(function (PendingRequest $pendingRequest) {
+            return $pendingRequest->withTokenAuth('yee-haw-request');
         });
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest = connector()->createPendingRequest($request);
 
-    expect($pendingRequest->getAuthenticator())->toEqual(new TokenAuthenticator('ooh-this-is-cool'));
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer ooh-this-is-cool');
-});
+        $this->assertEquals('Bearer yee-haw-request', $pendingRequest->headers()->get('Authorization'));
+    }
 
-test('you can add an authenticator inside of request middleware', function () {
-    $request = new UserRequest;
+    public function testIfYouUseTheAuthenticateMethodOnAFullyConstructedPendingRequestItWillAuthenticateRightAway()
+    {
+        $connector = new TestConnector();
+        $pendingRequest = $connector->createPendingRequest(new UserRequest());
 
-    $request->middleware()->onRequest(function (PendingRequest $pendingRequest) {
-        return $pendingRequest->withTokenAuth('yee-haw-request');
-    });
+        $this->assertEquals([
+            'Accept' => 'application/json',
+        ], $pendingRequest->headers()->all());
 
-    $pendingRequest = connector()->createPendingRequest($request);
+        $pendingRequest->authenticate(new TokenAuthenticator('yee-haw-request'));
 
-    expect($pendingRequest->headers()->get('Authorization'))->toEqual('Bearer yee-haw-request');
-});
-
-test('if you use the authenticate method on a fully constructed pending request it will authenticate right away', function () {
-    $connector = new TestConnector();
-    $pendingRequest = $connector->createPendingRequest(new UserRequest);
-
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-    ]);
-
-    $pendingRequest->authenticate(new TokenAuthenticator('yee-haw-request'));
-
-    expect($pendingRequest->headers()->all())->toEqual([
-        'Accept' => 'application/json',
-        'Authorization' => 'Bearer yee-haw-request',
-    ]);
-});
+        $this->assertEquals([
+            'Accept' => 'application/json',
+            'Authorization' => 'Bearer yee-haw-request',
+        ], $pendingRequest->headers()->all());
+    }
+}

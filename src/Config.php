@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon;
 
 use Saloon\Enums\PipeOrder;
 use Saloon\Contracts\Sender;
+use Saloon\Exceptions\DuplicatePipeNameException;
 use Saloon\Http\PendingRequest;
 use Saloon\Http\Senders\GuzzleSender;
 use Saloon\Helpers\MiddlewarePipeline;
@@ -16,49 +15,63 @@ final class Config
     /**
      * Default Sender
      *
-     * @var class-string<\Saloon\Contracts\Sender>
+     * @var class-string<Sender>
      */
-    public static string $defaultSender = GuzzleSender::class;
+    public static $defaultSender = GuzzleSender::class;
 
     /**
      * Default TLS Method (v1.2)
+     *
+     * @var int
      */
-    public static int $defaultTlsMethod = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
+    public static $defaultTlsMethod = STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT;
 
     /**
      * Default timeout (in seconds) for establishing a connection.
+     *
+     * @var int
      */
-    public static int $defaultConnectionTimeout = 10;
+    public static $defaultConnectionTimeout = 10;
 
     /**
      * Default timeout (in seconds) for making requests
+     *
+     * @var int
      */
-    public static int $defaultRequestTimeout = 30;
+    public static $defaultRequestTimeout = 30;
 
     /**
      * Resolve the sender with a callback
      *
      * @var callable|null
      */
-    private static mixed $senderResolver = null;
+    private static $senderResolver = null;
 
     /**
      * Global Middleware Pipeline
+     *
+     * @var MiddlewarePipeline|null
      */
-    private static ?MiddlewarePipeline $globalMiddlewarePipeline = null;
+    private static $globalMiddlewarePipeline = null;
 
     /**
      * Write a custom sender resolver
+     *
+     * @param callable|null $senderResolver
+     *
+     * @return void
      */
-    public static function setSenderResolver(?callable $senderResolver): void
+    public static function setSenderResolver(callable $senderResolver = null)
     {
         self::$senderResolver = $senderResolver;
     }
 
     /**
      * Create a new default sender
+     *
+     * @return Sender
      */
-    public static function getDefaultSender(): Sender
+    public static function getDefaultSender()
     {
         $senderResolver = self::$senderResolver;
 
@@ -67,29 +80,40 @@ final class Config
 
     /**
      * Update global middleware
+     *
+     * @return MiddlewarePipeline
      */
-    public static function globalMiddleware(): MiddlewarePipeline
+    public static function globalMiddleware()
     {
-        return self::$globalMiddlewarePipeline ??= new MiddlewarePipeline;
+        if (isset(self::$globalMiddlewarePipeline)) {
+            return self::$globalMiddlewarePipeline;
+        }
+        return self::$globalMiddlewarePipeline = new MiddlewarePipeline();
     }
 
     /**
      * Reset global middleware
+     *
+     * @return void
      */
-    public static function clearGlobalMiddleware(): void
+    public static function clearGlobalMiddleware()
     {
         self::$globalMiddlewarePipeline = null;
     }
 
     /**
      * Throw an exception if a request without a MockClient is made.
+     *
+     * @return void
+     *
+     * @throws DuplicatePipeNameException
      */
-    public static function preventStrayRequests(): void
+    public static function preventStrayRequests()
     {
         self::globalMiddleware()->onRequest(static function (PendingRequest $pendingRequest) {
             if (! $pendingRequest->hasMockClient()) {
                 throw new StrayRequestException;
             }
-        }, order: PipeOrder::LAST);
+        }, null, PipeOrder::LAST);
     }
 }

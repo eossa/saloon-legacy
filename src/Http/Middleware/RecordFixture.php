@@ -1,9 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Middleware;
 
+use Saloon\Exceptions\FixtureException;
 use Saloon\Http\Response;
 use Saloon\Http\Faking\Fixture;
 use Saloon\Data\RecordedResponse;
@@ -14,13 +13,17 @@ class RecordFixture implements ResponseMiddleware
 {
     /**
      * The Fixture
+     *
+     * @var Fixture
      */
-    protected Fixture $fixture;
+    protected $fixture;
 
     /**
      * Mock Client
+     *
+     * @var MockClient
      */
-    protected MockClient $mockClient;
+    protected $mockClient;
 
     /**
      * Constructor
@@ -33,8 +36,11 @@ class RecordFixture implements ResponseMiddleware
 
     /**
      * Store the response
+     *
+     * @return void
+     * @throws FixtureException
      */
-    public function __invoke(Response $response): void
+    public function __invoke(Response $response)
     {
         $this->fixture->store(
             RecordedResponse::fromResponse($response)

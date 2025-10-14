@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 use Closure;
@@ -17,13 +15,17 @@ class Debugger
      * Application "Die" handler.
      *
      * Only used for Saloon tests
+     *
+     * @var ?Closure
      */
-    public static ?Closure $dieHandler = null;
+    public static $dieHandler = null;
 
     /**
      * Debug a request with Symfony Var Dumper
+     *
+     * @return void
      */
-    public static function symfonyRequestDebugger(PendingRequest $pendingRequest, RequestInterface $psrRequest): void
+    public static function symfonyRequestDebugger(PendingRequest $pendingRequest, RequestInterface $psrRequest)
     {
         $headers = [];
 
@@ -31,12 +33,12 @@ class Debugger
             $headers[$headerName] = implode(';', $value);
         }
 
-        $className = explode('\\', $pendingRequest->getRequest()::class);
+        $className = explode('\\', get_class($pendingRequest->getRequest()));
         $label = end($className);
 
         VarDumper::dump([
-            'connector' => $pendingRequest->getConnector()::class,
-            'request' => $pendingRequest->getRequest()::class,
+            'connector' => get_class($pendingRequest->getConnector()),
+            'request' => get_class($pendingRequest->getRequest()),
             'method' => $psrRequest->getMethod(),
             'uri' => (string)$psrRequest->getUri(),
             'headers' => $headers,
@@ -46,8 +48,10 @@ class Debugger
 
     /**
      * Debug a response with Symfony Var Dumper
+     *
+     * @return void
      */
-    public static function symfonyResponseDebugger(Response $response, ResponseInterface $psrResponse): void
+    public static function symfonyResponseDebugger(Response $response, ResponseInterface $psrResponse)
     {
         $headers = [];
 
@@ -55,7 +59,7 @@ class Debugger
             $headers[$headerName] = implode(';', $value);
         }
 
-        $className = explode('\\', $response->getRequest()::class);
+        $className = explode('\\', get_class($response->getRequest()));
         $label = end($className);
 
         VarDumper::dump([
@@ -69,10 +73,14 @@ class Debugger
      * Kill the application
      *
      * This is a method as it can be easily mocked during tests
+     *
+     * @return void
      */
-    public static function die(): void
+    public static function dieApp()
     {
-        $handler = self::$dieHandler ?? static fn () => exit(1);
+        $handler = isset(self::$dieHandler) ? self::$dieHandler : static function () {
+            return exit(1);
+        };
 
         $handler();
     }

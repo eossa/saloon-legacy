@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Auth;
 
 use Saloon\Http\PendingRequest;
@@ -12,17 +10,34 @@ class HeaderAuthenticator implements Authenticator
     /**
      * Constructor
      */
+    /**
+     * @var string
+     */
+    public $accessToken;
+
+    /**
+     * @var string
+     */
+    public $headerName;
+
+    /**
+     * @param string $accessToken
+     * @param string $headerName
+     */
     public function __construct(
-        public string $accessToken,
-        public string $headerName = 'Authorization',
+        $accessToken,
+        $headerName = 'Authorization'
     ) {
-        //
+        $this->accessToken = $accessToken;
+        $this->headerName = $headerName;
     }
 
     /**
      * Apply the authentication to the request.
+     *
+     * @return void
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         $pendingRequest->headers()->add($this->headerName, $this->accessToken);
     }

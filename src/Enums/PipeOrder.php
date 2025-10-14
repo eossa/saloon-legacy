@@ -1,11 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Enums;
 
-enum PipeOrder: string
+class PipeOrder
 {
-    case FIRST = 'first';
-    case LAST = 'last';
+    const FIRST = 'first';
+    const LAST = 'last';
 }

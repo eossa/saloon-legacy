@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -10,13 +8,17 @@ class CustomBaseUrlConnector extends Connector
 {
     /**
      * Base URL
+     *
+     * @var string
      */
-    protected string $baseUrl = '';
+    protected $baseUrl = '';
 
     /**
      * Define the base URL of the API.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return $this->baseUrl;
     }
@@ -24,9 +26,11 @@ class CustomBaseUrlConnector extends Connector
     /**
      * Set a base URL
      *
-     * @return CustomBaseUrlConnector
+     * @param string $baseUrl
+     *
+     * @return $this
      */
-    public function setBaseUrl(string $baseUrl): static
+    public function setBaseUrl($baseUrl)
     {
         $this->baseUrl = $baseUrl;
 

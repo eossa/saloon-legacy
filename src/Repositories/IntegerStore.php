@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Repositories;
 
 use Saloon\Traits\Conditionable;
@@ -13,13 +11,17 @@ class IntegerStore implements IntegerStoreContract
 
     /**
      * store Data
+     *
+     * @var int|null
      */
-    protected ?int $data = null;
+    protected $data = null;
 
     /**
      * Constructor
+     *
+     * @param int|null $value
      */
-    public function __construct(?int $value = null)
+    public function __construct($value = null)
     {
         $this->set($value);
     }
@@ -27,9 +29,11 @@ class IntegerStore implements IntegerStoreContract
     /**
      * Set a value inside the store
      *
+     * @param int|null $value
+     *
      * @return $this
      */
-    public function set(?int $value): static
+    public function set($value)
     {
         $this->data = $value;
 
@@ -38,24 +42,30 @@ class IntegerStore implements IntegerStoreContract
 
     /**
      * Retrieve all in the store
+     *
+     * @return int|null
      */
-    public function get(): ?int
+    public function get()
     {
         return $this->data;
     }
 
     /**
      * Determine if the store is empty
+     *
+     * @return bool
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return empty($this->data);
     }
 
     /**
      * Determine if the store is not empty
+     *
+     * @return bool
      */
-    public function isNotEmpty(): bool
+    public function isNotEmpty()
     {
         return ! $this->isEmpty();
     }

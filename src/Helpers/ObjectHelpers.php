@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 /**
@@ -11,8 +9,14 @@ final class ObjectHelpers
 {
     /**
      * Get an item from an object using "dot" notation.
+     *
+     * @param object $object
+     * @param string $key
+     * @param mixed $default
+     *
+     * @return mixed
      */
-    public static function get(object $object, string $key, mixed $default = null): mixed
+    public static function get($object, $key, $default = null)
     {
         // Split the dot notation into individual keys
 

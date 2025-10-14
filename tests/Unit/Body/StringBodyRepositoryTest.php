@@ -1,47 +1,59 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\Body\StringBodyRepository;
 
-test('the store is empty by default', function () {
-    $body = new StringBodyRepository();
+class StringBodyRepositoryTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $body = new StringBodyRepository();
 
-    expect($body->all())->toBeNull();
-});
+        $this->assertNull($body->all());
+    }
 
+    public function testTheStoreCanHaveADefaultStringProvided()
+    {
+        $body = new StringBodyRepository('Yeehaw!');
 
-test('the store can have a default string provided', function () {
-    $body = new StringBodyRepository('Yeehaw!');
+        $this->assertEquals('Yeehaw!', $body->all());
+    }
 
-    expect($body->all())->toEqual('Yeehaw!');
-});
+    public function testYouCanSetIt()
+    {
+        $body = new StringBodyRepository('Sam');
 
-test('you can set it', function () {
-    $body = new StringBodyRepository('Sam');
+        $body->set('Yeehaw!');
 
-    $body->set('Yeehaw!');
+        $this->assertEquals('Yeehaw!', $body->all());
+    }
 
-    expect($body->all())->toEqual('Yeehaw!');
-});
+    public function testYouCanConditionallySetOnTheStore()
+    {
+        $body = new StringBodyRepository();
 
-test('you can conditionally set on the store', function () {
-    $body = new StringBodyRepository();
+        $body->when(true, function (StringBodyRepository $body) {
+            $body->set('Gareth');
+        });
+        $body->when(false, function (StringBodyRepository $body) {
+            $body->set('Sam');
+        });
 
-    $body->when(true, fn (StringBodyRepository $body) => $body->set('Gareth'));
-    $body->when(false, fn (StringBodyRepository $body) => $body->set('Sam'));
+        $this->assertEquals('Gareth', $body->all());
+    }
 
-    expect($body->all())->toEqual('Gareth');
-});
+    public function testYouCanCheckIfTheStoreIsEmptyOrNot()
+    {
+        $body = new StringBodyRepository();
 
-test('you can check if the store is empty or not', function () {
-    $body = new StringBodyRepository();
+        $this->assertTrue($body->isEmpty());
+        $this->assertFalse($body->isNotEmpty());
 
-    expect($body->isEmpty())->toBeTrue();
-    expect($body->isNotEmpty())->toBeFalse();
+        $body->set('Sam');
 
-    $body->set('Sam');
-
-    expect($body->isEmpty())->toBeFalse();
-    expect($body->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($body->isEmpty());
+        $this->assertTrue($body->isNotEmpty());
+    }
+}

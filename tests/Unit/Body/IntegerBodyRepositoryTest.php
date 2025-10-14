@@ -1,43 +1,50 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
-
+use PHPUnit\Framework\TestCase;
 use Saloon\Repositories\IntegerStore;
 
-test('the store is empty by default', function () {
-    $store = new IntegerStore();
+class IntegerBodyRepositoryTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $store = new IntegerStore();
 
-    expect($store->get())->toEqual(null);
-});
+        $this->assertEquals(null, $store->get());
+    }
 
-test('the store can have an array provided', function () {
-    $store = new IntegerStore(1);
+    public function testTheStoreCanHaveAnIntegerProvided()
+    {
+        $store = new IntegerStore(1);
 
-    expect($store->get())->toEqual(1);
-});
+        $this->assertEquals(1, $store->get());
+    }
 
-test('you can set it', function () {
-    $store = new IntegerStore();
+    public function testYouCanSetIt()
+    {
+        $store = new IntegerStore();
 
-    $store->set(1);
+        $store->set(1);
 
-    expect($store->get())->toEqual(1);
-});
+        $this->assertEquals(1, $store->get());
+    }
 
-test('you can check if the store is empty', function () {
-    $store = new IntegerStore();
+    public function testYouCanCheckIfTheStoreIsEmpty()
+    {
+        $store = new IntegerStore();
 
-    expect($store->isEmpty())->toBeTrue();
-    expect($store->isNotEmpty())->toBeFalse();
+        $this->assertTrue($store->isEmpty());
+        $this->assertFalse($store->isNotEmpty());
 
-    $store->set(0);
+        $store->set(0);
 
-    expect($store->isEmpty())->toBeTrue();
-    expect($store->isNotEmpty())->toBeFalse();
+        $this->assertTrue($store->isEmpty());
+        $this->assertFalse($store->isNotEmpty());
 
-    $store->set(1);
+        $store->set(1);
 
-    expect($store->isEmpty())->toBeFalse();
-    expect($store->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($store->isEmpty());
+        $this->assertTrue($store->isNotEmpty());
+    }
+}

@@ -1,150 +1,177 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
+use InvalidArgumentException;
+use PHPUnit\Framework\TestCase;
 use Saloon\Contracts\Body\MergeableBody;
 use Saloon\Repositories\Body\ArrayBodyRepository;
 
-test('the store is empty by default', function () {
-    $body = new ArrayBodyRepository();
+class ArrayBodyRepositoryTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $body = new ArrayBodyRepository();
 
-    expect($body->all())->toEqual([]);
-});
+        $this->assertEquals([], $body->all());
+    }
 
-test('the store can have an array provided', function () {
-    $body = new ArrayBodyRepository([
-        'name' => 'Sam',
-        'sidekick' => 'Mantas',
-    ]);
+    public function testTheStoreCanHaveAnArrayProvided()
+    {
+        $body = new ArrayBodyRepository([
+            'name' => 'Sam',
+            'sidekick' => 'Mantas',
+        ]);
 
-    expect($body->all())->toEqual([
-        'name' => 'Sam',
-        'sidekick' => 'Mantas',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sam',
+            'sidekick' => 'Mantas',
+        ], $body->all());
+    }
 
-test('you can set it', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanSetIt()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->set(['name' => 'Sam']);
+        $body->set(['name' => 'Sam']);
 
-    expect($body->all())->toEqual(['name' => 'Sam']);
-});
+        $this->assertEquals(['name' => 'Sam'], $body->all());
+    }
 
-test('it will throw an exception if you set a non-array', function () {
-    $this->expectException(InvalidArgumentException::class);
-    $this->expectExceptionMessage('The value must be an array');
+    public function testItWillThrowAnExceptionIfYouSetANonArray()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('The value must be an array');
 
-    $body = new ArrayBodyRepository();
-    $body->set('Sam');
-});
+        $body = new ArrayBodyRepository();
+        $body->set('Sam');
+    }
 
-test('you can add an item', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanAddAnItem()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add('name', 'Sam');
+        $body->add('name', 'Sam');
 
-    expect($body->all())->toEqual(['name' => 'Sam']);
-});
+        $this->assertEquals(['name' => 'Sam'], $body->all());
+    }
 
-test('you can add an item with an integer key', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanAddAnItemWithAnIntegerKey()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add(1, 'Sam');
+        $body->add(1, 'Sam');
 
-    expect($body->all())->toEqual([1 => 'Sam']);
-});
+        $this->assertEquals([1 => 'Sam'], $body->all());
+    }
 
-test('you can add an item without a key', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanAddAnItemWithoutAKey()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add(null, 'Sam');
+        $body->add(null, 'Sam');
 
-    expect($body->all())->toEqual(['Sam']);
-});
+        $this->assertEquals(['Sam'], $body->all());
+    }
 
-test('you can conditionally add items to the array store', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanConditionallyAddItemsToTheArrayStore()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->when(true, fn (ArrayBodyRepository $body) => $body->add('name', 'Gareth'));
-    $body->when(false, fn (ArrayBodyRepository $body) => $body->add('name', 'Sam'));
-    $body->when(true, fn (ArrayBodyRepository $body) => $body->add('sidekick', 'Mantas'));
-    $body->when(false, fn (ArrayBodyRepository $body) => $body->add('sidekick', 'Teo'));
+        $body->when(true, function (ArrayBodyRepository $body) {
+            $body->add('name', 'Gareth');
+        });
+        $body->when(false, function (ArrayBodyRepository $body) {
+            $body->add('name', 'Sam');
+        });
+        $body->when(true, function (ArrayBodyRepository $body) {
+            $body->add('sidekick', 'Mantas');
+        });
+        $body->when(false, function (ArrayBodyRepository $body) {
+            $body->add('sidekick', 'Teo');
+        });
 
-    expect($body->all())->toEqual(['name' => 'Gareth', 'sidekick' => 'Mantas']);
-});
+        $this->assertEquals(['name' => 'Gareth', 'sidekick' => 'Mantas'], $body->all());
+    }
 
-test('you can delete an item', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanDeleteAnItem()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add('name', 'Sam');
-    $body->remove('name');
+        $body->add('name', 'Sam');
+        $body->remove('name');
 
-    expect($body->all())->toEqual([]);
-});
+        $this->assertEquals([], $body->all());
+    }
 
-test('you can delete an item with an integer key', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanDeleteAnItemWithAnIntegerKey()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add(1, 'Sam');
-    $body->remove(1);
+        $body->add(1, 'Sam');
+        $body->remove(1);
 
-    expect($body->all())->toEqual([]);
-});
+        $this->assertEquals([], $body->all());
+    }
 
-test('you can get an item', function () {
-    $body = new ArrayBodyRepository();
+    public function testYouCanGetAnItem()
+    {
+        $body = new ArrayBodyRepository();
 
-    $body->add('name', 'Sam');
+        $body->add('name', 'Sam');
 
-    expect($body->get('name'))->toEqual('Sam');
+        $this->assertEquals('Sam', $body->get('name'));
 
-    // When omitting the key it should act like `->all()`
+        // When omitting the key it should act like `->all()`
+        $this->assertEquals(['name' => 'Sam'], $body->all());
+    }
 
-    expect($body->all())->toEqual(['name' => 'Sam']);
-});
+    public function testYouCanGetAnItemWithAnIntegerKey()
+    {
+        $body = new ArrayBodyRepository();
 
-test('you can get an item with an integer key', function () {
-    $body = new ArrayBodyRepository();
+        $body->add(2, 'Sam');
 
-    $body->add(2, 'Sam');
+        $this->assertEquals('Sam', $body->get(2));
+    }
 
-    expect($body->get(2))->toEqual('Sam');
-});
+    public function testYouCanGetAllItems()
+    {
+        $body = new ArrayBodyRepository();
 
-test('you can get all items', function () {
-    $body = new ArrayBodyRepository();
+        $body->add('name', 'Sam');
+        $body->add('superhero', 'Iron Man');
 
-    $body->add('name', 'Sam');
-    $body->add('superhero', 'Iron Man');
+        $allResults = ['name' => 'Sam', 'superhero' => 'Iron Man'];
 
-    $allResults = ['name' => 'Sam', 'superhero' => 'Iron Man'];
+        $this->assertEquals($allResults, $body->all());
+        $this->assertEquals($allResults, $body->all());
+    }
 
-    expect($body->all())->toEqual($allResults);
-    expect($body->all())->toEqual($allResults);
-});
+    public function testYouCanMergeItemsTogetherIntoTheBodyRepository()
+    {
+        $body = new ArrayBodyRepository();
 
-test('you can merge items together into the body repository', function () {
-    $body = new ArrayBodyRepository();
+        $this->assertInstanceOf(MergeableBody::class, $body);
 
-    expect($body)->toBeInstanceOf(MergeableBody::class);
+        $body->add('name', 'Sam');
+        $body->add('sidekick', 'Mantas');
 
-    $body->add('name', 'Sam');
-    $body->add('sidekick', 'Mantas');
+        $body->merge(['sidekick' => 'Gareth'], ['superhero' => 'Black Widow']);
 
-    $body->merge(['sidekick' => 'Gareth'], ['superhero' => 'Black Widow']);
+        $this->assertEquals(['name' => 'Sam', 'sidekick' => 'Gareth', 'superhero' => 'Black Widow'], $body->all());
+    }
 
-    expect($body->all())->toEqual(['name' => 'Sam', 'sidekick' => 'Gareth', 'superhero' => 'Black Widow']);
-});
+    public function testYouCanCheckIfTheStoreIsEmptyOrNot()
+    {
+        $body = new ArrayBodyRepository();
 
-test('you can check if the store is empty or not', function () {
-    $body = new ArrayBodyRepository();
+        $this->assertTrue($body->isEmpty());
+        $this->assertFalse($body->isNotEmpty());
 
-    expect($body->isEmpty())->toBeTrue();
-    expect($body->isNotEmpty())->toBeFalse();
+        $body->add('name', 'Sam');
 
-    $body->add('name', 'Sam');
-
-    expect($body->isEmpty())->toBeFalse();
-    expect($body->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($body->isEmpty());
+        $this->assertTrue($body->isNotEmpty());
+    }
+}

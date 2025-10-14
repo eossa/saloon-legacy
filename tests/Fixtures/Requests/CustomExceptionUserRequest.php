@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
-use Throwable;
+use Exception;
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\Response;
@@ -17,20 +15,27 @@ class CustomExceptionUserRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
     /**
      * Get the custom request exception
+     *
+     * @param Response $response
+     * @param Exception|null $senderException
+     *
+     * @return Exception|null
      */
-    public function getRequestException(Response $response, ?Throwable $senderException): ?Throwable
+    public function getRequestException(Response $response, Exception $senderException = null)
     {
         return new CustomRequestException($response, 'Oh yee-naw.', 0, $senderException);
     }

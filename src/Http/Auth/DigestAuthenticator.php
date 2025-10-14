@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Auth;
 
 use GuzzleHttp\RequestOptions;
@@ -13,22 +11,45 @@ use Saloon\Exceptions\SaloonException;
 class DigestAuthenticator implements Authenticator
 {
     /**
+     * @var string
+     */
+    public $username;
+
+    /**
+     * @var string
+     */
+    public $password;
+
+    /**
+     * @var string
+     */
+    public $digest;
+
+    /**
      * Constructor
+     *
+     * @param string $username
+     * @param string $password
+     * @param string $digest
      */
     public function __construct(
-        public string $username,
-        public string $password,
-        public string $digest,
+        $username,
+        $password,
+        $digest
     ) {
-        //
+        $this->username = $username;
+        $this->password = $password;
+        $this->digest = $digest;
     }
 
     /**
      * Apply the authentication to the request.
      *
-     * @throws \Saloon\Exceptions\SaloonException
+     * @return void
+     *
+     * @throws SaloonException
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         if (! $pendingRequest->getConnector()->sender() instanceof GuzzleSender) {
             throw new SaloonException('The DigestAuthenticator is only supported when using the GuzzleSender.');

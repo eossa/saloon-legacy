@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -13,12 +11,17 @@ class MixedMultipartRequest extends Request implements HasBody
 {
     use HasMultipartBody;
 
-    protected Method $method = Method::POST;
+    /**
+     * @var string
+     */
+    protected $method = Method::POST;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/mixed-multipart';
     }

@@ -1,66 +1,75 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Oauth2;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Tests\Helpers\Date;
 use Saloon\Http\Auth\AccessTokenAuthenticator;
 
-it('can be serialized and unserialized', function () {
-    $accessToken = 'access';
-    $refreshToken = 'refresh';
-    $expiresAt = Date::now()->toDateTime();
+class AccessTokenAuthenticatorTest extends TestCase
+{
+    public function testCanBeSerializedAndUnserialized()
+    {
+        $accessToken = 'access';
+        $refreshToken = 'refresh';
+        $expiresAt = Date::now()->toDateTime();
 
-    $authenticator = new AccessTokenAuthenticator($accessToken, $refreshToken, $expiresAt);
+        $authenticator = new AccessTokenAuthenticator($accessToken, $refreshToken, $expiresAt);
 
-    expect($authenticator->getAccessToken())->toEqual($accessToken);
-    expect($authenticator->getRefreshToken())->toEqual($refreshToken);
-    expect($authenticator->getExpiresAt())->toEqual($expiresAt);
+        $this->assertEquals($accessToken, $authenticator->getAccessToken());
+        $this->assertEquals($refreshToken, $authenticator->getRefreshToken());
+        $this->assertEquals($expiresAt, $authenticator->getExpiresAt());
 
-    $serialized = $authenticator->serialize();
+        $serialized = $authenticator->serialize();
 
-    expect($serialized)->toBeString();
+        $this->assertInternalType('string', $serialized);
 
-    $unserialized = AccessTokenAuthenticator::unserialize($serialized);
+        $unserialized = AccessTokenAuthenticator::unserialize($serialized);
 
-    expect($unserialized)->toEqual($authenticator);
-});
+        $this->assertEquals($authenticator, $unserialized);
+    }
 
-it('can return if it has expired or not', function () {
-    $accessToken = 'access';
-    $refreshToken = 'refresh';
-    $expiresAt = Date::now()->subMinutes(5)->toDateTime();
+    public function testCanReturnIfItHasExpiredOrNot()
+    {
+        $accessToken = 'access';
+        $refreshToken = 'refresh';
+        $expiresAt = Date::now()->subMinutes(5)->toDateTime();
 
-    $authenticator = new AccessTokenAuthenticator($accessToken, $refreshToken, $expiresAt);
+        $authenticator = new AccessTokenAuthenticator($accessToken, $refreshToken, $expiresAt);
 
-    expect($authenticator->isRefreshable())->toBeTrue();
-    expect($authenticator->isNotRefreshable())->toBeFalse();
-    expect($authenticator->hasExpired())->toBeTrue();
-    expect($authenticator->hasNotExpired())->toBeFalse();
-});
+        $this->assertTrue($authenticator->isRefreshable());
+        $this->assertFalse($authenticator->isNotRefreshable());
+        $this->assertTrue($authenticator->hasExpired());
+        $this->assertFalse($authenticator->hasNotExpired());
+    }
 
-test('can be constructed without a refresh token or expiry', function () {
-    $authenticator = new AccessTokenAuthenticator('access');
+    public function testCanBeConstructedWithoutARefreshTokenOrExpiry()
+    {
+        $authenticator = new AccessTokenAuthenticator('access');
 
-    expect($authenticator->getAccessToken())->toEqual('access');
-    expect($authenticator->getRefreshToken())->toBeNull();
-    expect($authenticator->getExpiresAt())->toBeNull();
-    expect($authenticator->isRefreshable())->toBeFalse();
-    expect($authenticator->isNotRefreshable())->toBeTrue();
-});
+        $this->assertEquals('access', $authenticator->getAccessToken());
+        $this->assertNull($authenticator->getRefreshToken());
+        $this->assertNull($authenticator->getExpiresAt());
+        $this->assertFalse($authenticator->isRefreshable());
+        $this->assertTrue($authenticator->isNotRefreshable());
+    }
 
-test('can be constructed with just an access token and expiry', function () {
-    $expiresAt = Date::now()->subMinutes(5)->toDateTime();
+    public function testCanBeConstructedWithJustAnAccessTokenAndExpiry()
+    {
+        $expiresAt = Date::now()->subMinutes(5)->toDateTime();
 
-    $authenticator = new AccessTokenAuthenticator('access', null, $expiresAt);
+        $authenticator = new AccessTokenAuthenticator('access', null, $expiresAt);
 
-    expect($authenticator->hasExpired())->toBeTrue();
-    expect($authenticator->hasNotExpired())->toBeFalse();
-});
+        $this->assertTrue($authenticator->hasExpired());
+        $this->assertFalse($authenticator->hasNotExpired());
+    }
 
-test('it allows expires_in to be optional', function () {
-    $authenticator = new AccessTokenAuthenticator('access', 'refresh', null);
+    public function testItAllowsExpiresInToBeOptional()
+    {
+        $authenticator = new AccessTokenAuthenticator('access', 'refresh', null);
 
-    expect($authenticator->getExpiresAt())->toBeNull();
-    expect($authenticator->isRefreshable())->toBeTrue();
-    expect($authenticator->isNotRefreshable())->toBeFalse();
-});
+        $this->assertNull($authenticator->getExpiresAt());
+        $this->assertTrue($authenticator->isRefreshable());
+        $this->assertFalse($authenticator->isNotRefreshable());
+    }
+}

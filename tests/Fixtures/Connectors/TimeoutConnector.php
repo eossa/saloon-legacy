@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -13,14 +11,22 @@ class TimeoutConnector extends Connector
     use AcceptsJson;
     use HasTimeout;
 
-    protected int $connectTimeout = 10;
+    /**
+     * @var int
+     */
+    protected $connectTimeout = 10;
 
-    protected int $requestTimeout = 5;
+    /**
+     * @var int
+     */
+    protected $requestTimeout = 5;
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
@@ -30,7 +36,7 @@ class TimeoutConnector extends Connector
      *
      * @return string[]
      */
-    public function defaultHeaders(): array
+    public function defaultHeaders()
     {
         return [];
     }

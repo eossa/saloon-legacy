@@ -1,11 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 use LogicException;
-use Saloon\Enums\Method;
 use Saloon\Traits\Bootable;
 use Saloon\Traits\Makeable;
 use Saloon\Traits\HasDebugging;
@@ -36,13 +33,17 @@ abstract class Request
 
     /**
      * Define the HTTP method.
+     *
+     * @var string
      */
-    protected Method $method;
+    protected $method;
 
     /**
      * Get the method of the request.
+     *
+     * @return string
      */
-    public function getMethod(): Method
+    public function getMethod()
     {
         if (! isset($this->method)) {
             throw new LogicException('Your request is missing a HTTP method. You must add a method property like [protected Method $method = Method::GET]');
@@ -53,6 +54,8 @@ abstract class Request
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    abstract public function resolveEndpoint(): string;
+    abstract public function resolveEndpoint();
 }

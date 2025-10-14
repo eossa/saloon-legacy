@@ -1,28 +1,29 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Repositories\Body;
 
-use Stringable;
 use Saloon\Traits\Conditionable;
 use Saloon\Contracts\Body\BodyRepository;
 use Saloon\Traits\Body\CreatesStreamFromString;
 
-class StringBodyRepository implements BodyRepository, Stringable
+class StringBodyRepository implements BodyRepository
 {
     use CreatesStreamFromString;
     use Conditionable;
 
     /**
      * Repository Data
+     *
+     * @var string|null
      */
-    protected ?string $data = null;
+    protected $data = null;
 
     /**
      * Constructor
+     *
+     * @param string|null $value
      */
-    public function __construct(string|null $value = null)
+    public function __construct($value = null)
     {
         $this->set($value);
     }
@@ -31,9 +32,10 @@ class StringBodyRepository implements BodyRepository, Stringable
      * Set a value inside the repository
      *
      * @param string|null $value
+     *
      * @return $this
      */
-    public function set(mixed $value): static
+    public function set($value)
     {
         $this->data = $value;
 
@@ -42,33 +44,41 @@ class StringBodyRepository implements BodyRepository, Stringable
 
     /**
      * Retrieve all in the repository
+     *
+     * @return ?string
      */
-    public function all(): ?string
+    public function all()
     {
         return $this->data;
     }
 
     /**
      * Determine if the repository is empty
+     *
+     * @return bool
      */
-    public function isEmpty(): bool
+    public function isEmpty()
     {
         return empty($this->data);
     }
 
     /**
      * Determine if the repository is not empty
+     *
+     * @return bool
      */
-    public function isNotEmpty(): bool
+    public function isNotEmpty()
     {
         return ! $this->isEmpty();
     }
 
     /**
      * Convert the repository into a string
+     *
+     * @return string
      */
-    public function __toString(): string
+    public function __toString()
     {
-        return $this->all() ?? '';
+        return $this->all() ?: '';
     }
 }

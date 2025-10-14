@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Response;
@@ -15,8 +13,10 @@ class DtoConnector extends Connector
 
     /**
      * Define the base url of the api.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return apiUrl();
     }
@@ -26,15 +26,17 @@ class DtoConnector extends Connector
      *
      * @return string[]
      */
-    public function defaultHeaders(): array
+    public function defaultHeaders()
     {
         return [];
     }
 
     /**
      * Create DTO from Response
+     *
+     * @return mixed
      */
-    public function createDtoFromResponse(Response $response): mixed
+    public function createDtoFromResponse(Response $response)
     {
         return ApiResponse::fromSaloon($response);
     }

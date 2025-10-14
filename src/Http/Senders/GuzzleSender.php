@@ -1,11 +1,11 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Senders;
 
 use Exception;
+use GuzzleHttp\Exception\GuzzleException;
 use Saloon\Config;
+use Saloon\Exceptions\InvalidResponseClassException;
 use Saloon\Http\Response;
 use GuzzleHttp\HandlerStack;
 use Saloon\Contracts\Sender;
@@ -27,13 +27,17 @@ class GuzzleSender implements Sender
 {
     /**
      * The Guzzle client.
+     *
+     * @var GuzzleClient
      */
-    protected GuzzleClient $client;
+    protected $client;
 
     /**
      * Guzzle's Handler Stack.
+     *
+     * @var HandlerStack
      */
-    protected HandlerStack $handlerStack;
+    protected $handlerStack;
 
     /**
      * Constructor
@@ -47,24 +51,28 @@ class GuzzleSender implements Sender
 
     /**
      * Get the factory collection
+     *
+     * @return FactoryCollection
      */
-    public function getFactoryCollection(): FactoryCollection
+    public function getFactoryCollection()
     {
-        $factory = new HttpFactory;
+        $factory = new HttpFactory();
 
         return new FactoryCollection(
-            requestFactory: $factory,
-            uriFactory: $factory,
-            streamFactory: $factory,
-            responseFactory: $factory,
-            multipartBodyFactory: new GuzzleMultipartBodyFactory,
+            $factory,
+            $factory,
+            $factory,
+            $factory,
+            new GuzzleMultipartBodyFactory()
         );
     }
 
     /**
      * Create a new Guzzle client
+     *
+     * @return GuzzleClient
      */
-    protected function createGuzzleClient(): GuzzleClient
+    protected function createGuzzleClient()
     {
         // We'll use HandlerStack::create as it will create a default
         // handler stack with the default Guzzle middleware like
@@ -78,7 +86,7 @@ class GuzzleSender implements Sender
         // customise or add middleware to the handler stack.
 
         return new GuzzleClient([
-            RequestOptions::CRYPTO_METHOD => Config::$defaultTlsMethod,
+            'crypto_method' => Config::$defaultTlsMethod,
             RequestOptions::CONNECT_TIMEOUT => Config::$defaultConnectionTimeout,
             RequestOptions::TIMEOUT => Config::$defaultRequestTimeout,
             RequestOptions::HTTP_ERRORS => true,
@@ -89,10 +97,13 @@ class GuzzleSender implements Sender
     /**
      * Send a synchronous request.
      *
-     * @throws \GuzzleHttp\Exception\GuzzleException
-     * @throws \Saloon\Exceptions\Request\FatalRequestException
+     * @return Response
+     *
+     * @throws GuzzleException
+     * @throws FatalRequestException
+     * @throws InvalidResponseClassException
      */
-    public function send(PendingRequest $pendingRequest): Response
+    public function send(PendingRequest $pendingRequest)
     {
         $request = $pendingRequest->createPsrRequest();
         $requestOptions = $pendingRequest->config()->all();
@@ -122,8 +133,10 @@ class GuzzleSender implements Sender
 
     /**
      * Send an asynchronous request
+     *
+     * @return PromiseInterface
      */
-    public function sendAsync(PendingRequest $pendingRequest): PromiseInterface
+    public function sendAsync(PendingRequest $pendingRequest)
     {
         $request = $pendingRequest->createPsrRequest();
         $requestOptions = $pendingRequest->config()->all();
@@ -135,8 +148,10 @@ class GuzzleSender implements Sender
 
     /**
      * Update the promise provided by Guzzle.
+     *
+     * @return PromiseInterface
      */
-    protected function processPromise(RequestInterface $psrRequest, PromiseInterface $promise, PendingRequest $pendingRequest): PromiseInterface
+    protected function processPromise(RequestInterface $psrRequest, PromiseInterface $promise, PendingRequest $pendingRequest)
     {
         return $promise
             ->then(
@@ -172,17 +187,30 @@ class GuzzleSender implements Sender
 
                     // Throw the exception our way
 
-                    return ($exception = $response->toException()) ? throw $exception : $response;
+                    if (($exception = $response->toException())) {
+                        throw $exception;
+                    } else {
+                        return $response;
+                    }
                 }
             );
     }
 
     /**
      * Create a response.
+     *
+     * @param ResponseInterface $psrResponse
+     * @param PendingRequest $pendingRequest
+     * @param RequestInterface $psrRequest
+     * @param Exception|null $exception
+     *
+     * @return Response
+     *
+     * @throws InvalidResponseClassException
      */
-    protected function createResponse(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, ?Exception $exception = null): Response
+    protected function createResponse(ResponseInterface $psrResponse, PendingRequest $pendingRequest, RequestInterface $psrRequest, Exception $exception = null)
     {
-        /** @var class-string<\Saloon\Http\Response> $responseClass */
+        /** @var class-string<Response> $responseClass */
         $responseClass = $pendingRequest->getResponseClass();
 
         return $responseClass::fromPsrResponse($psrResponse, $pendingRequest, $psrRequest, $exception);
@@ -191,9 +219,12 @@ class GuzzleSender implements Sender
     /**
      * Add a middleware to the handler stack.
      *
+     * @param callable $callable
+     * @param string $name
+     *
      * @return $this
      */
-    public function addMiddleware(callable $callable, string $name = ''): static
+    public function addMiddleware(callable $callable, $name = '')
     {
         $this->handlerStack->push($callable, $name);
 
@@ -205,7 +236,7 @@ class GuzzleSender implements Sender
      *
      * @return $this
      */
-    public function setHandlerStack(HandlerStack $handlerStack): static
+    public function setHandlerStack(HandlerStack $handlerStack)
     {
         $this->handlerStack = $handlerStack;
 
@@ -214,16 +245,20 @@ class GuzzleSender implements Sender
 
     /**
      * Get the handler stack.
+     *
+     * @return HandlerStack
      */
-    public function getHandlerStack(): HandlerStack
+    public function getHandlerStack()
     {
         return $this->handlerStack;
     }
 
     /**
      * Get the Guzzle client
+     *
+     * @return GuzzleClient
      */
-    public function getGuzzleClient(): GuzzleClient
+    public function getGuzzleClient()
     {
         return $this->client;
     }

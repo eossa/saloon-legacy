@@ -1,15 +1,18 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Exceptions;
 
-use Throwable;
+use Exception;
 
 class InvalidStateException extends SaloonException
 {
-    public function __construct(?string $message = null, int $code = 0, ?Throwable $previous = null)
+    /**
+     * @param string|null $message
+     * @param int $code
+     * @param Exception|null $previous
+     */
+    public function __construct($message = null, $code = 0, $previous = null)
     {
-        parent::__construct($message ?? 'Invalid state.', $code, $previous);
+        parent::__construct(isset($message) ? $message : 'Invalid state.', $code, $previous);
     }
 }

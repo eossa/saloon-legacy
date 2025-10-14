@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
 use Saloon\Http\PendingRequest;
@@ -13,9 +11,11 @@ trait ChecksForHasBody
     /**
      * Check if the request or connector has the WithBody class.
      *
-     * @throws \Saloon\Exceptions\BodyException
+     * @return void
+     *
+     * @throws BodyException
      */
-    public function bootChecksForHasBody(PendingRequest $pendingRequest): void
+    public function bootChecksForHasBody(PendingRequest $pendingRequest)
     {
         if ($pendingRequest->getRequest() instanceof HasBody || $pendingRequest->getConnector() instanceof HasBody) {
             return;

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Authenticators;
 
 use Saloon\Http\PendingRequest;
@@ -9,18 +7,33 @@ use Saloon\Contracts\Authenticator;
 
 class PizzaAuthenticator implements Authenticator
 {
+    /**
+     * @var string
+     */
+    private $pizza;
+    /**
+     * @var string
+     */
+    private $drink;
 
+    /**
+     * @param string $pizza
+     * @param string $drink
+     */
     public function __construct(
-        public string $pizza,
-        public string $drink,
+        $pizza,
+        $drink
     ) {
-        //
+        $this->pizza = $pizza;
+        $this->drink = $drink;
     }
 
     /**
      * Set the pending request.
+     *
+     * @return void
      */
-    public function set(PendingRequest $pendingRequest): void
+    public function set(PendingRequest $pendingRequest)
     {
         $pendingRequest->headers()->add('X-Pizza', $this->pizza);
         $pendingRequest->headers()->add('X-Drink', $this->drink);

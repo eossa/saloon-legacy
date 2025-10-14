@@ -1,64 +1,72 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Response;
 use GuzzleHttp\Promise\PromiseInterface;
 use Saloon\Exceptions\Request\RequestException;
 use Saloon\Tests\Fixtures\Requests\SoloUserRequest;
 use Saloon\Tests\Fixtures\Requests\SoloErrorRequest;
 
-test('a solo request can be sent synchronously', function () {
-    $request = new SoloUserRequest;
-    $response = $request->send();
+class SoloRequestTest extends TestCase
+{
+    public function testASoloRequestCanBeSentSynchronously()
+    {
+        $request = new SoloUserRequest();
+        $response = $request->send();
 
-    $data = $response->json();
+        $data = $response->json();
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(200);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(200, $response->status());
 
-    expect($data)->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $data);
+    }
 
-test('a synchronous solo request can handle an exception property', function () {
-    $request = new SoloErrorRequest();
-    $response = $request->send();
+    public function testASynchronousSoloRequestCanHandleAnExceptionProperty()
+    {
+        $request = new SoloErrorRequest();
+        $response = $request->send();
 
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(500);
-});
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(500, $response->status());
+    }
 
-test('a solo request can be sent asynchronously', function () {
-    $request = new SoloUserRequest;
-    $promise = $request->sendAsync();
+    public function testASoloRequestCanBeSentAsynchronously()
+    {
+        $request = new SoloUserRequest();
+        $promise = $request->sendAsync();
 
-    expect($promise)->toBeInstanceOf(PromiseInterface::class);
+        $this->assertInstanceOf(PromiseInterface::class, $promise);
 
-    $response = $promise->wait();
+        $response = $promise->wait();
 
-    $data = $response->json();
+        $data = $response->json();
 
-    expect($response)->toBeInstanceOf(Response::class);
-    expect($response->isMocked())->toBeFalse();
-    expect($response->status())->toEqual(200);
+        $this->assertInstanceOf(Response::class, $response);
+        $this->assertFalse($response->isMocked());
+        $this->assertEquals(200, $response->status());
 
-    expect($data)->toEqual([
-        'name' => 'Sammyjo20',
-        'actual_name' => 'Sam',
-        'twitter' => '@carre_sam',
-    ]);
-});
+        $this->assertEquals([
+            'name' => 'Sammyjo20',
+            'actual_name' => 'Sam',
+            'twitter' => '@carre_sam',
+        ], $data);
+    }
 
-test('a asynchronous solo request can handle an exception property', function () {
-    $request = new SoloErrorRequest();
-    $promise = $request->sendAsync();
+    public function testAAsynchronousSoloRequestCanHandleAnExceptionProperty()
+    {
+        $request = new SoloErrorRequest();
+        $promise = $request->sendAsync();
 
-    $this->expectException(RequestException::class);
+        $this->expectException(RequestException::class);
 
-    $promise->wait();
-});
+        $promise->wait();
+    }
+}

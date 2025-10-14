@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use GuzzleHttp\RequestOptions;
 use GuzzleHttp\Psr7\HttpFactory;
 use Saloon\Http\Faking\MockResponse;
@@ -10,31 +11,36 @@ use GuzzleHttp\Promise\FulfilledPromise;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 
-test('you can provide digest authentication and guzzle will send it', function () {
-    $connector = new TestConnector;
-    $request = new UserRequest;
+class AuthenticatesRequestsTest extends TestCase
+{
+    public function testYouCanProvideDigestAuthenticationAndGuzzleWillSendIt()
+    {
+        $connector = new TestConnector();
+        $request = new UserRequest();
 
-    $request->withDigestAuth('Sammyjo20', 'Cowboy1', 'Howdy');
+        $request->withDigestAuth('Sammyjo20', 'Cowboy1', 'Howdy');
 
-    $asserted = false;
+        $asserted = false;
 
-    $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
-        return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
-            expect($options)->toHaveKey(RequestOptions::AUTH, [
-                'Sammyjo20',
-                'Cowboy1',
-                'Howdy',
-            ]);
+        $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
+            return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
+                $this->assertArrayHasKey(RequestOptions::AUTH, $options);
+                $this->assertEquals([
+                    'Sammyjo20',
+                    'Cowboy1',
+                    'Howdy',
+                ], $options[RequestOptions::AUTH]);
 
-            $asserted = true;
+                $asserted = true;
 
-            $factory = new HttpFactory;
+                $factory = new HttpFactory();
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
 
-    $connector->send($request);
+        $connector->send($request);
 
-    expect($asserted)->toBeTrue();
-});
+        $this->assertTrue($asserted);
+    }
+}

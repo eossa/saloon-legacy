@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\OAuth2;
 
 use Saloon\Enums\Method;
@@ -18,13 +16,22 @@ class GetUserRequest extends Request implements HasBody
 
     /**
      * Define the method that the request will use.
+     *
+     * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
+
+    /**
+     * @var OAuthConfig
+     */
+    protected $oauthConfig;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return $this->oauthConfig->getUserEndpoint();
     }
@@ -32,8 +39,8 @@ class GetUserRequest extends Request implements HasBody
     /**
      * Requires the authorization code and OAuth 2 config.
      */
-    public function __construct(protected OAuthConfig $oauthConfig)
+    public function __construct(OAuthConfig $oauthConfig)
     {
-        //
+        $this->oauthConfig = $oauthConfig;
     }
 }

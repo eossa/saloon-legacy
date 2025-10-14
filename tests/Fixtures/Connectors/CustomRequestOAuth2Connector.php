@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Request;
@@ -18,16 +16,20 @@ class CustomRequestOAuth2Connector extends Connector
 
     /**
      * Define the base URL.
+     *
+     * @return string
      */
-    public function resolveBaseUrl(): string
+    public function resolveBaseUrl()
     {
         return 'https://oauth.saloon.dev';
     }
 
     /**
      * Define default Oauth config.
+     *
+     * @return OAuthConfig
      */
-    protected function defaultOauthConfig(): OAuthConfig
+    protected function defaultOauthConfig()
     {
         return OAuthConfig::make()
             ->setClientId('client-id')
@@ -37,24 +39,34 @@ class CustomRequestOAuth2Connector extends Connector
 
     /**
      * Resolve the access token request
+     *
+     * @param string $code
+     *
+     * @return Request
      */
-    protected function resolveAccessTokenRequest(string $code, OAuthConfig $oauthConfig): Request
+    protected function resolveAccessTokenRequest($code, OAuthConfig $oauthConfig)
     {
         return new CustomAccessTokenRequest($code, $oauthConfig);
     }
 
     /**
      * Resolve the refresh token request
+     *
+     * @param string $refreshToken
+     *
+     * @return Request
      */
-    protected function resolveRefreshTokenRequest(OAuthConfig $oauthConfig, string $refreshToken): Request
+    protected function resolveRefreshTokenRequest(OAuthConfig $oauthConfig, $refreshToken)
     {
         return new CustomRefreshTokenRequest($oauthConfig, $refreshToken);
     }
 
     /**
      * Resolve the user request
+     *
+     * @return Request
      */
-    protected function resolveUserRequest(OAuthConfig $oauthConfig): Request
+    protected function resolveUserRequest(OAuthConfig $oauthConfig)
     {
         return new CustomOAuthUserRequest($oauthConfig);
     }

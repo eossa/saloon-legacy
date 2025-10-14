@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Contracts;
 
 use DateTimeImmutable;
@@ -10,36 +8,50 @@ interface OAuthAuthenticator extends Authenticator
 {
     /**
      * Get the access token
+     *
+     * @return string
      */
-    public function getAccessToken(): string;
+    public function getAccessToken();
 
     /**
      * Get the refresh token
+     *
+     * @return string|null
      */
-    public function getRefreshToken(): ?string;
+    public function getRefreshToken();
 
     /**
      * Get the expiry
+     *
+     * @return DateTimeImmutable|null
      */
-    public function getExpiresAt(): ?DateTimeImmutable;
+    public function getExpiresAt();
 
     /**
      * Check if the authenticator has expired
+     *
+     * @return bool
      */
-    public function hasExpired(): bool;
+    public function hasExpired();
 
     /**
      * Check if the authenticator has not expired
+     *
+     * @return bool
      */
-    public function hasNotExpired(): bool;
+    public function hasNotExpired();
 
     /**
      * Check if the authenticator is refreshable
+     *
+     * @return bool
      */
-    public function isRefreshable(): bool;
+    public function isRefreshable();
 
     /**
      * Check if the authenticator is not refreshable
+     *
+     * @return bool
      */
-    public function isNotRefreshable(): bool;
+    public function isNotRefreshable();
 }

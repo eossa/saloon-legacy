@@ -1,5 +1,5 @@
 {
-    "name": "saloonphp/saloon",
+    "name": "eossa/saloon-legacy",
     "description": "Build beautiful API integrations and SDKs with Saloon",
     "license": "MIT",
     "type": "library",
@@ -15,65 +15,63 @@
             "name": "Sam Carré",
             "email": "29132017+Sammyjo20@users.noreply.github.com",
             "role": "Developer"
+        },
+        {
+            "name": "Elkin Ossa",
+            "email": "16960004+eossa@users.noreply.github.com",
+            "role": "Developer"
         }
     ],
-    "homepage": "https://github.com/saloonphp/saloon",
+    "homepage": "https://github.com/eossa/saloon",
     "require": {
-        "php": "^8.1",
-        "guzzlehttp/guzzle": "^7.6",
-        "guzzlehttp/promises": "^1.5 || ^2.0",
-        "guzzlehttp/psr7": "^2.0",
-        "psr/http-factory": "^1.0",
-        "psr/http-message": "^1.1 || ^2.0"
+        "php": "^5.6 || ~7.0",
+        "guzzlehttp/guzzle": "^6.3",
+        "guzzlehttp/promises": "^1.3",
+        "guzzlehttp/psr7": "^1.6",
+        "psr/http-message": "^1.0",
+        "ext-json": "*"
     },
     "require-dev": {
         "ext-simplexml": "*",
-        "friendsofphp/php-cs-fixer": "^3.5",
-        "illuminate/collections": "^9.39 || ^10.0",
-        "league/flysystem": "^3.0",
-        "pestphp/pest": "^2.10",
-        "phpstan/phpstan": "^1.11.4",
-        "saloonphp/xml-wrangler": "^1.1",
-        "spatie/ray": "^1.33",
-        "symfony/dom-crawler": "^6.0 || ^7.0",
-        "symfony/var-dumper": "^6.3 || ^7.0"
+        "friendsofphp/php-cs-fixer": "^2.0",
+        "league/flysystem": "^1.0",
+        "phpunit/phpunit": "^5.7",
+        "symfony/dom-crawler": "^3.0",
+        "symfony/var-dumper": "^3.0"
     },
     "conflict": {
         "sammyjo20/saloon": "*"
     },
     "suggest": {
-        "illuminate/collections": "Required for the response collect() method.",
+        "illuminate/support": "Required for the response collect() method.",
         "symfony/dom-crawler": "Required for the response dom() method.",
-        "saloonphp/xml-wrangler": "Required for the response xmlReader() method.",
         "symfony/var-dumper": "Required for default debugging drivers."
     },
     "minimum-stability": "stable",
     "autoload": {
         "psr-4": {
-            "Saloon\\": "src/"
+            "Saloon\\": "src/",
+            "GuzzleHttp\\": "libs/guzzle/",
+            "Psr\\": "libs/psr/"
         }
     },
     "autoload-dev": {
         "psr-4": {
             "Saloon\\Tests\\": "tests/"
-        }
+        },
+        "files": [
+            "tests/helpers.php"
+        ]
     },
     "config": {
         "allow-plugins": {
-            "dealerdirect/phpcodesniffer-composer-installer": true,
-            "pestphp/pest-plugin": true
+            "dealerdirect/phpcodesniffer-composer-installer": true
         },
         "sort-packages": true
     },
     "scripts": {
         "fix-code": [
             "./vendor/bin/php-cs-fixer fix --allow-risky=yes"
-        ],
-        "test": [
-            "./vendor/bin/pest -p"
-        ],
-        "pstan": [
-            "./vendor/bin/phpstan analyse"
         ]
     }
 }

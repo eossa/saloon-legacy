@@ -1,11 +1,12 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Enums\Method;
 use Saloon\Http\Request;
 use Saloon\Http\Connector;
 use Saloon\Helpers\Helpers;
+use PHPUnit\Framework\TestCase;
 use Saloon\Traits\Body\HasXmlBody;
 use Saloon\Traits\Body\HasFormBody;
 use Saloon\Traits\Body\HasJsonBody;
@@ -16,48 +17,69 @@ use Saloon\Traits\Body\HasMultipartBody;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 
-test('each of the body traits has the ChecksForWithBody trait added', function (string $trait) {
-    $uses = Helpers::classUsesRecursive($trait);
+class BodyTraitTest extends TestCase
+{
+    /**
+     * @dataProvider bodyTraitProvider
+     */
+    public function testEachOfTheBodyTraitsHasTheChecksForWithBodyTraitAdded($trait)
+    {
+        $uses = Helpers::classUsesRecursive($trait);
 
-    expect($uses)->toHaveKey(ChecksForHasBody::class, ChecksForHasBody::class);
-})->with([
-    HasStringBody::class,
-    HasFormBody::class,
-    HasJsonBody::class,
-    HasMultipartBody::class,
-    HasXmlBody::class,
-]);
+        $this->assertArrayHasKey(ChecksForHasBody::class, $uses);
+        $this->assertEquals(ChecksForHasBody::class, $uses[ChecksForHasBody::class]);
+    }
 
-test('when a body trait is added to a request without WithBody it will throw an exception', function () {
-    $request = new class extends Request {
-        use HasJsonBody;
+    public function bodyTraitProvider()
+    {
+        return [
+            [HasStringBody::class],
+            [HasFormBody::class],
+            [HasJsonBody::class],
+            [HasMultipartBody::class],
+            [HasXmlBody::class],
+        ];
+    }
 
-        protected Method $method = Method::GET;
+    public function testWhenABodyTraitIsAddedToARequestWithoutWithBodyItWillThrowAnException()
+    {
+        $request = new TestRequestWithJsonBody();
 
-        public function resolveEndpoint(): string
-        {
-            return '';
-        }
-    };
+        $this->expectException(BodyException::class);
+        $this->expectExceptionMessage('You have added a body trait without implementing `Saloon\Contracts\Body\HasBody` on your request or connector.');
 
-    $this->expectException(BodyException::class);
-    $this->expectExceptionMessage('You have added a body trait without implementing `Saloon\Contracts\Body\HasBody` on your request or connector.');
+        TestConnector::make()->send($request);
+    }
 
-    TestConnector::make()->send($request);
-});
+    public function testWhenABodyTraitIsAddedToAConnectorWithoutWithBodyItWillThrowAnException()
+    {
+        $connector = new TestConnectorWithJsonBody();
 
-test('when a body trait is added to a connector without WithBody it will throw an exception', function () {
-    $connector = new class extends Connector {
-        use HasJsonBody;
+        $this->expectException(BodyException::class);
+        $this->expectExceptionMessage('You have added a body trait without implementing `Saloon\Contracts\Body\HasBody` on your request or connector.');
 
-        public function resolveBaseUrl(): string
-        {
-            return '';
-        }
-    };
+        $connector->send(new UserRequest());
+    }
+}
 
-    $this->expectException(BodyException::class);
-    $this->expectExceptionMessage('You have added a body trait without implementing `Saloon\Contracts\Body\HasBody` on your request or connector.');
+class TestRequestWithJsonBody extends Request
+{
+    use HasJsonBody;
 
-    $connector->send(new UserRequest);
-});
+    protected $method = Method::GET;
+
+    public function resolveEndpoint()
+    {
+        return '';
+    }
+}
+
+class TestConnectorWithJsonBody extends Connector
+{
+    use HasJsonBody;
+
+    public function resolveBaseUrl()
+    {
+        return '';
+    }
+}

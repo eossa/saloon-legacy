@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Helpers;
 
 use DateTime;
@@ -11,17 +9,24 @@ use DateTimeImmutable;
 final class Date
 {
     /**
+     * @var DateTime
+     */
+    protected $dateTime;
+
+    /**
      * Constructor
      */
-    public function __construct(protected DateTime $dateTime)
+    public function __construct(DateTime $dateTime)
     {
-        //
+        $this->dateTime = $dateTime;
     }
 
     /**
      * Construct
+     *
+     * @return $this
      */
-    public static function now(): self
+    public static function now()
     {
         return new self(new DateTime);
     }
@@ -29,9 +34,11 @@ final class Date
     /**
      * Add seconds
      *
+     * @param int $seconds
+     *
      * @return $this
      */
-    public function addSeconds(int $seconds): self
+    public function addSeconds($seconds)
     {
         $this->dateTime->add(
             DateInterval::createFromDateString($seconds . ' seconds')
@@ -43,9 +50,11 @@ final class Date
     /**
      * Subtract minutes
      *
+     * @param int $minutes
+     *
      * @return $this
      */
-    public function subMinutes(int $minutes): self
+    public function subMinutes($minutes)
     {
         $this->dateTime->sub(
             DateInterval::createFromDateString($minutes . ' minutes')
@@ -56,8 +65,10 @@ final class Date
 
     /**
      * Get the datetime instance
+     *
+     * @return DateTimeImmutable
      */
-    public function toDateTime(): DateTimeImmutable
+    public function toDateTime()
     {
         return DateTimeImmutable::createFromMutable($this->dateTime);
     }

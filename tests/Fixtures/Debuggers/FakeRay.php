@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Debuggers;
 
 use Spatie\Ray\Client;
@@ -9,21 +7,33 @@ use Spatie\Ray\Request;
 
 class FakeRay extends Client
 {
-    protected array $sentRequests = [];
+    /**
+     * @var array
+     */
+    protected $sentRequests = [];
 
-    public function serverIsAvailable(): bool
+    /**
+     * @return bool
+     */
+    public function serverIsAvailable()
     {
         return true;
     }
 
-    public function send(Request $request): void
+    /**
+     * @return void
+     */
+    public function send(Request $request)
     {
         $requestProperties = $request->toArray();
 
         $this->sentRequests[] = $requestProperties;
     }
 
-    public function getSentRequests(): array
+    /**
+     * @return array
+     */
+    public function getSentRequests()
     {
         return $this->sentRequests;
     }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Auth;
 
 use Saloon\Http\PendingRequest;
@@ -13,9 +11,11 @@ trait RequiresAuth
     /**
      * Throw an exception if an authenticator is not on the request while it is booting.
      *
-     * @throws \Saloon\Exceptions\MissingAuthenticatorException
+     * @return void
+     *
+     * @throws MissingAuthenticatorException
      */
-    public function bootRequiresAuth(PendingRequest $pendingSaloonRequest): void
+    public function bootRequiresAuth(PendingRequest $pendingSaloonRequest)
     {
         $authenticator = $pendingSaloonRequest->getAuthenticator();
 
@@ -26,9 +26,11 @@ trait RequiresAuth
 
     /**
      * Default message.
+     *
+     * @return string
      */
-    protected function getRequiresAuthMessage(PendingRequest $pendingRequest): string
+    protected function getRequiresAuthMessage(PendingRequest $pendingRequest)
     {
-        return sprintf('The "%s" request requires authentication.', $pendingRequest->getRequest()::class);
+        return sprintf('The "%s" request requires authentication.', get_class($pendingRequest->getRequest()));
     }
 }

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 use Saloon\Exceptions\DirectoryNotFoundException;
@@ -15,19 +13,28 @@ class Storage
 {
     /**
      * The base directory to access the files.
+     *
+     * @var string
      */
-    protected string $baseDirectory;
+    protected $baseDirectory;
 
     /**
      * Constructor
      *
-     * @throws \Saloon\Exceptions\DirectoryNotFoundException
-     * @throws \Saloon\Exceptions\UnableToCreateDirectoryException
+     * @param string $baseDirectory
+     * @param bool $createMissingBaseDirectory
+     *
+     * @throws DirectoryNotFoundException
+     * @throws UnableToCreateDirectoryException
      */
-    public function __construct(string $baseDirectory, bool $createMissingBaseDirectory = false)
+    public function __construct($baseDirectory, $createMissingBaseDirectory = false)
     {
         if (! is_dir($baseDirectory)) {
-            $createMissingBaseDirectory ? $this->createDirectory($baseDirectory) : throw new DirectoryNotFoundException($baseDirectory);
+            if ($createMissingBaseDirectory) {
+                $this->createDirectory($baseDirectory);
+            } else {
+                throw new DirectoryNotFoundException($baseDirectory);
+            }
         }
 
         $this->baseDirectory = $baseDirectory;
@@ -35,16 +42,22 @@ class Storage
 
     /**
      * Get the base directory
+     *
+     * @return string
      */
-    public function getBaseDirectory(): string
+    public function getBaseDirectory()
     {
         return $this->baseDirectory;
     }
 
     /**
      * Combine the base directory with a path.
+     *
+     * @param string $path
+     *
+     * @return string
      */
-    protected function buildPath(string $path): string
+    protected function buildPath($path)
     {
         $trimRules = DIRECTORY_SEPARATOR . ' ';
 
@@ -53,24 +66,36 @@ class Storage
 
     /**
      * Check if the file exists
+     *
+     * @param string $path
+     *
+     * @return bool
      */
-    public function exists(string $path): bool
+    public function exists($path)
     {
         return file_exists($this->buildPath($path));
     }
 
     /**
      * Check if the file is missing
+     *
+     * @param string $path
+     *
+     * @return bool
      */
-    public function missing(string $path): bool
+    public function missing($path)
     {
         return ! $this->exists($path);
     }
 
     /**
      * Retrieve an item from storage
+     *
+     * @param string $path
+     *
+     * @return bool|string
      */
-    public function get(string $path): bool|string
+    public function get($path)
     {
         return file_get_contents($this->buildPath($path));
     }
@@ -78,11 +103,15 @@ class Storage
     /**
      * Put an item in storage
      *
+     * @param string $path
+     * @param string $contents
+     *
      * @return $this
-     * @throws \Saloon\Exceptions\UnableToCreateDirectoryException
-     * @throws \Saloon\Exceptions\UnableToCreateFileException
+     *
+     * @throws UnableToCreateDirectoryException
+     * @throws UnableToCreateFileException
      */
-    public function put(string $path, string $contents): static
+    public function put($path, $contents)
     {
         $fullPath = $this->buildPath($path);
 
@@ -104,9 +133,13 @@ class Storage
     /**
      * Create a directory
      *
-     * @throws \Saloon\Exceptions\UnableToCreateDirectoryException
+     * @param string $directory
+     *
+     * @return bool
+     *
+     * @throws UnableToCreateDirectoryException
      */
-    public function createDirectory(string $directory): bool
+    public function createDirectory($directory)
     {
         $createdDirectory = mkdir($directory, 0777, true);
 

@@ -1,9 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits;
 
+use Psr\Http\Message\RequestInterface;
+use Psr\Http\Message\ResponseInterface;
+use Saloon\Exceptions\DuplicatePipeNameException;
 use Saloon\Http\Response;
 use Saloon\Enums\PipeOrder;
 use Saloon\Helpers\Debugger;
@@ -16,29 +17,38 @@ trait HasDebugging
      *
      * Leave blank for a default debugger (requires symfony/var-dump)
      *
-     * @param callable(\Saloon\Http\PendingRequest, \Psr\Http\Message\RequestInterface): void|null $onRequest
+     * @param callable(PendingRequest, RequestInterface): void|null $onRequest
+     * @param bool $die
+     *
      * @return $this
+     *
+     * @throws DuplicatePipeNameException
      */
-    public function debugRequest(?callable $onRequest = null, bool $die = false): static
+    public function debugRequest(callable $onRequest = null, $die = false)
     {
         // When the user has not specified a callable to debug with, we will use this default
         // debugging driver. This will use symfony/var-dumper to display a nice output to
         // the user's screen of the request.
 
-        $onRequest ??= Debugger::symfonyRequestDebugger(...);
+        if (is_null($onRequest)) {
+            $onRequest = function (PendingRequest $pendingRequest, RequestInterface $psrRequest) {
+                Debugger::symfonyRequestDebugger($pendingRequest, $psrRequest);
+            };
+        }
 
         // Register the middleware - we will use PipeOrder::FIRST to ensure that the response
         // is shown before it is modified by the user's middleware.
 
         $this->middleware()->onRequest(
-            callable: static function (PendingRequest $pendingRequest) use ($onRequest, $die): void {
+            static function (PendingRequest $pendingRequest) use ($onRequest, $die) {
                 $onRequest($pendingRequest, $pendingRequest->createPsrRequest());
 
                 if ($die) {
-                    Debugger::die();
+                    Debugger::dieApp();
                 }
             },
-            order: PipeOrder::LAST
+            null,
+            PipeOrder::LAST
         );
 
         return $this;
@@ -49,29 +59,38 @@ trait HasDebugging
      *
      * Leave blank for a default debugger (requires symfony/var-dump)
      *
-     * @param callable(\Saloon\Http\Response, \Psr\Http\Message\ResponseInterface): void|null $onResponse
+     * @param callable(Response, ResponseInterface): void|null $onResponse
+     * @param bool $die
+     *
      * @return $this
+     *
+     * @throws DuplicatePipeNameException
      */
-    public function debugResponse(?callable $onResponse = null, bool $die = false): static
+    public function debugResponse(callable $onResponse = null, $die = false)
     {
         // When the user has not specified a callable to debug with, we will use this default
         // debugging driver. This will use symfony/var-dumper to display a nice output to
         // the user's screen of the response.
 
-        $onResponse ??= Debugger::symfonyResponseDebugger(...);
+        if (is_null($onResponse)) {
+            $onResponse = function (Response $response, ResponseInterface $psrResponse) {
+                Debugger::symfonyResponseDebugger($response, $psrResponse);
+            };
+        }
 
         // Register the middleware - we will use PipeOrder::FIRST to ensure that the response
         // is shown before it is modified by the user's middleware.
 
         $this->middleware()->onResponse(
-            callable: static function (Response $response) use ($onResponse, $die): void {
+            static function (Response $response) use ($onResponse, $die) {
                 $onResponse($response, $response->getPsrResponse());
 
                 if ($die) {
-                    Debugger::die();
+                    Debugger::dieApp();
                 }
             },
-            order: PipeOrder::FIRST
+            null,
+            PipeOrder::FIRST
         );
 
         return $this;
@@ -88,9 +107,14 @@ trait HasDebugging
      * reflected by this output.
      *
      * Requires symfony/var-dumper
+     *
+     * @param bool $die
+     *
+     * @return $this
+     * @throws DuplicatePipeNameException
      */
-    public function debug(bool $die = false): static
+    public function debug($die = false)
     {
-        return $this->debugRequest()->debugResponse(die: $die);
+        return $this->debugRequest()->debugResponse(null, $die);
     }
 }

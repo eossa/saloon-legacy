@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,17 +13,20 @@ class DefaultEndpointRequest extends Request
      *
      * @var string|null
      */
-    protected Method $method = Method::POST;
+    protected $method = Method::POST;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
 
-    
-    public function resolveEndpoint(): string
+
+    /**
+     * @return string
+     */
+    public function resolveEndpoint()
     {
         return '';
     }

@@ -1,9 +1,9 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Body;
 
+use Exception;
+use Saloon\Data\MultipartValue;
 use Saloon\Http\PendingRequest;
 use Saloon\Repositories\Body\MultipartBodyRepository;
 
@@ -13,31 +13,44 @@ trait HasMultipartBody
 
     /**
      * Body Repository
+     *
+     * @var MultipartBodyRepository
      */
-    protected MultipartBodyRepository $body;
+    protected $body;
 
     /**
      * Boot the HasMultipartBody trait
+     *
+     * @return void
+     *
+     * @throws Exception
      */
-    public function bootHasMultipartBody(PendingRequest $pendingRequest): void
+    public function bootHasMultipartBody(PendingRequest $pendingRequest)
     {
         $pendingRequest->headers()->add('Content-Type', 'multipart/form-data; boundary=' . $this->body()->getBoundary());
     }
 
     /**
      * Retrieve the data repository
+     *
+     * @return MultipartBodyRepository
+     *
+     * @throws Exception
      */
-    public function body(): MultipartBodyRepository
+    public function body()
     {
-        return $this->body ??= new MultipartBodyRepository($this->defaultBody());
+        if (isset($this->body)) {
+            return $this->body;
+        }
+        return $this->body = new MultipartBodyRepository($this->defaultBody());
     }
 
     /**
      * Default body
      *
-     * @return array<\Saloon\Data\MultipartValue>
+     * @return array<MultipartValue>
      */
-    protected function defaultBody(): array
+    protected function defaultBody()
     {
         return [];
     }

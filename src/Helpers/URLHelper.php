@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 /**
@@ -11,16 +9,26 @@ class URLHelper
 {
     /**
      * Check if a URL matches a given pattern
+     *
+     * @param string $pattern
+     * @param string $value
+     *
+     * @return bool
      */
-    public static function matches(string $pattern, string $value): bool
+    public static function matches($pattern, $value)
     {
         return StringHelpers::matchesPattern(StringHelpers::start($pattern, '*'), $value);
     }
 
     /**
      * Join a base url and an endpoint together.
+     *
+     * @param string $baseUrl
+     * @param string $endpoint
+     *
+     * @return string
      */
-    public static function join(string $baseUrl, string $endpoint): string
+    public static function join($baseUrl, $endpoint)
     {
         if (static::isValidUrl($endpoint)) {
             return $endpoint;
@@ -41,8 +49,12 @@ class URLHelper
 
     /**
      * Check if the URL is a valid URL
+     *
+     * @param string $url
+     *
+     * @return bool
      */
-    public static function isValidUrl(string $url): bool
+    public static function isValidUrl($url)
     {
         return ! empty(filter_var($url, FILTER_VALIDATE_URL));
     }
@@ -50,9 +62,11 @@ class URLHelper
     /**
      * Parse a query string into an array
      *
+     * @param string $query
+     *
      * @return array<string, mixed>
      */
-    public static function parseQueryString(string $query): array
+    public static function parseQueryString($query)
     {
         if ($query === '') {
             return [];
@@ -64,7 +78,7 @@ class URLHelper
             $name = urldecode((string)strtok($parameter, '='));
             $value = urldecode((string)strtok('='));
 
-            if (! $name || str_starts_with($parameter, '=')) {
+            if (! $name || strpos($parameter, '=') === 0) {
                 continue;
             }
 

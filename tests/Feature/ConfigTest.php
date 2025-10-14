@@ -1,7 +1,8 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature;
 
+use PHPUnit\Framework\TestCase;
 use GuzzleHttp\Psr7\HttpFactory;
 use Saloon\Http\Faking\MockResponse;
 use Psr\Http\Message\RequestInterface;
@@ -9,46 +10,65 @@ use GuzzleHttp\Promise\FulfilledPromise;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 
-test('default guzzle config options are sent', function () {
-    $connector = new TestConnector;
+class ConfigTest extends TestCase
+{
+    public function testDefaultGuzzleConfigOptionsAreSent()
+    {
+        $connector = new TestConnector();
 
-    $connector->sender()->addMiddleware(function (callable $handler) {
-        return function (RequestInterface $guzzleRequest, array $options) {
-            expect($options)->toHaveKey('http_errors', true);
-            expect($options)->toHaveKey('connect_timeout', 10);
-            expect($options)->toHaveKey('timeout', 30);
+        $connector->sender()->addMiddleware(function (callable $handler) {
+            return function (RequestInterface $guzzleRequest, array $options) {
+                $this->assertArrayHasKey('http_errors', $options);
+                $this->assertEquals(true, $options['http_errors']);
 
-            $factory = new HttpFactory;
+                $this->assertArrayHasKey('connect_timeout', $options);
+                $this->assertEquals(10, $options['connect_timeout']);
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+                $this->assertArrayHasKey('timeout', $options);
+                $this->assertEquals(30, $options['timeout']);
 
-    $connector->send(new UserRequest);
-});
+                $factory = new HttpFactory();
 
-test('you can pass additional guzzle config options and they are merged from the connector and request', function () {
-    $connector = new TestConnector();
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
 
-    $connector->config()->add('debug', true);
+        $connector->send(new UserRequest());
+    }
 
-    $connector->sender()->addMiddleware(function (callable $handler) {
-        return function (RequestInterface $guzzleRequest, array $options) {
-            expect($options)->toHaveKey('http_errors', true);
-            expect($options)->toHaveKey('connect_timeout', 10);
-            expect($options)->toHaveKey('timeout', 30);
-            expect($options)->toHaveKey('debug', true);
-            expect($options)->toHaveKey('verify', false);
+    public function testYouCanPassAdditionalGuzzleConfigOptionsAndTheyAreMergedFromTheConnectorAndRequest()
+    {
+        $connector = new TestConnector();
 
-            $factory = new HttpFactory;
+        $connector->config()->add('debug', true);
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+        $connector->sender()->addMiddleware(function (callable $handler) {
+            return function (RequestInterface $guzzleRequest, array $options) {
+                $this->assertArrayHasKey('http_errors', $options);
+                $this->assertEquals(true, $options['http_errors']);
 
-    $request = new UserRequest;
+                $this->assertArrayHasKey('connect_timeout', $options);
+                $this->assertEquals(10, $options['connect_timeout']);
 
-    $request->config()->add('verify', false);
+                $this->assertArrayHasKey('timeout', $options);
+                $this->assertEquals(30, $options['timeout']);
 
-    $connector->send($request);
-});
+                $this->assertArrayHasKey('debug', $options);
+                $this->assertEquals(true, $options['debug']);
+
+                $this->assertArrayHasKey('verify', $options);
+                $this->assertEquals(false, $options['verify']);
+
+                $factory = new HttpFactory();
+
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
+
+        $request = new UserRequest();
+
+        $request->config()->add('verify', false);
+
+        $connector->send($request);
+    }
+}

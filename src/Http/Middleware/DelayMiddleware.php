@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Middleware;
 
 use Saloon\Http\PendingRequest;
@@ -11,10 +9,13 @@ class DelayMiddleware implements RequestMiddleware
 {
     /**
      * Register a request middleware
+     *
+     * @return void
      */
-    public function __invoke(PendingRequest $pendingRequest): void
+    public function __invoke(PendingRequest $pendingRequest)
     {
-        $delay = $pendingRequest->delay()->get() ?? 0;
+        $pendingRequestDelay = $pendingRequest->delay()->get();
+        $delay = isset($pendingRequestDelay) ? $pendingRequestDelay : 0;
 
         usleep($delay * 1000);
     }

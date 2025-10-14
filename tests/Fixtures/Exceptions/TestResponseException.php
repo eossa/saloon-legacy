@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Exceptions;
 
 use Exception;
@@ -11,13 +9,18 @@ class TestResponseException extends Exception
 {
     /**
      * Pending Request
+     *
+     * @var PendingRequest
      */
-    protected PendingRequest $pendingRequest;
+    protected $pendingRequest;
 
     /**
      * Constructor
+     *
+     * @param string $message
+     * @param PendingRequest $pendingRequest
      */
-    public function __construct(string $message, PendingRequest $pendingRequest)
+    public function __construct($message, PendingRequest $pendingRequest)
     {
         $this->pendingRequest = $pendingRequest;
 
@@ -26,8 +29,10 @@ class TestResponseException extends Exception
 
     /**
      * Get the pending request
+     *
+     * @return PendingRequest
      */
-    public function getPendingRequest(): PendingRequest
+    public function getPendingRequest()
     {
         return $this->pendingRequest;
     }

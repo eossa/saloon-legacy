@@ -1,173 +1,199 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit\Body;
 
+use InvalidArgumentException;
+use PHPUnit\Framework\TestCase;
 use Saloon\Data\MultipartValue;
 use Saloon\Contracts\Body\MergeableBody;
 use Saloon\Repositories\Body\MultipartBodyRepository;
 
-test('the store is empty by default', function () {
-    $body = new MultipartBodyRepository();
+class MultipartBodyRepositoryTest extends TestCase
+{
+    public function testTheStoreIsEmptyByDefault()
+    {
+        $body = new MultipartBodyRepository();
 
-    expect($body->all())->toEqual([]);
-});
+        $this->assertEquals([], $body->all());
+    }
 
-test('the store can have an array of multipart values provided', function () {
-    $body = new MultipartBodyRepository([
-        new MultipartValue('name', 'Sam'),
-        new MultipartValue('sidekick', 'Mantas'),
-    ]);
+    public function testTheStoreCanHaveAnArrayOfMultipartValuesProvided()
+    {
+        $body = new MultipartBodyRepository([
+            new MultipartValue('name', 'Sam'),
+            new MultipartValue('sidekick', 'Mantas'),
+        ]);
 
-    expect($body->all())->toEqual([
-        new MultipartValue('name', 'Sam'),
-        new MultipartValue('sidekick', 'Mantas'),
-    ]);
-});
+        $this->assertEquals([
+            new MultipartValue('name', 'Sam'),
+            new MultipartValue('sidekick', 'Mantas'),
+        ], $body->all());
+    }
 
-test('the store will throw an exception if set value is not an array', function () {
-    $this->expectException(InvalidArgumentException::class);
-    $this->expectExceptionMessage('The value must be an array');
+    public function testTheStoreWillThrowAnExceptionIfSetValueIsNotAnArray()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('The value must be an array');
 
-    $body = new MultipartBodyRepository();
-    $body->set('123');
-});
+        $body = new MultipartBodyRepository();
+        $body->set('123');
+    }
 
-test('the store will throw an exception if the array does not contain multipart values', function () {
-    $this->expectException(InvalidArgumentException::class);
-    $this->expectExceptionMessage('The value array must only contain Saloon\Data\MultipartValue objects');
+    public function testTheStoreWillThrowAnExceptionIfTheArrayDoesNotContainMultipartValues()
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('The value array must only contain Saloon\Data\MultipartValue objects');
 
-    new MultipartBodyRepository([
-        'name' => 'Sam',
-        'sidekick' => new MultipartValue('username', 'Sammyjo20'),
-    ]);
-});
+        new MultipartBodyRepository([
+            'name' => 'Sam',
+            'sidekick' => new MultipartValue('username', 'Sammyjo20'),
+        ]);
+    }
 
-test('you can set it', function () {
-    $body = new MultipartBodyRepository();
+    public function testYouCanSetIt()
+    {
+        $body = new MultipartBodyRepository();
 
-    $body->set([
-        new MultipartValue('username', 'Sammyjo20'),
-    ]);
+        $body->set([
+            new MultipartValue('username', 'Sammyjo20'),
+        ]);
 
-    expect($body->all())->toEqual([
-        new MultipartValue('username', 'Sammyjo20'),
-    ]);
-});
+        $this->assertEquals([
+            new MultipartValue('username', 'Sammyjo20'),
+        ], $body->all());
+    }
 
-test('you can add multiple items', function () {
-    $body = new MultipartBodyRepository;
+    public function testYouCanAddMultipleItems()
+    {
+        $body = new MultipartBodyRepository();
 
-    $body->add('name', 'Sam', 'welcome.txt', ['a' => 'b']);
+        $body->add('name', 'Sam', 'welcome.txt', ['a' => 'b']);
 
-    expect($body->all())->toEqual([
-        new MultipartValue('name', 'Sam', 'welcome.txt', ['a' => 'b']),
-    ]);
+        $this->assertEquals([
+            new MultipartValue('name', 'Sam', 'welcome.txt', ['a' => 'b']),
+        ], $body->all());
 
-    // Test it gets added to the array
+        // Test it gets added to the array
+        $body->add('name', 'Charlotte', 'welcome.txt', ['a' => 'b']);
 
-    $body->add('name', 'Charlotte', 'welcome.txt', ['a' => 'b']);
+        $this->assertEquals([
+            new MultipartValue('name', 'Sam', 'welcome.txt', ['a' => 'b']),
+            new MultipartValue('name', 'Charlotte', 'welcome.txt', ['a' => 'b']),
+        ], $body->all());
+    }
 
-    expect($body->all())->toEqual([
-        new MultipartValue('name', 'Sam', 'welcome.txt', ['a' => 'b']),
-        new MultipartValue('name', 'Charlotte', 'welcome.txt', ['a' => 'b']),
-    ]);
-});
+    public function testYouCanConditionallyAddItemsToTheArrayStore()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can conditionally add items to the array store', function () {
-    $body = new MultipartBodyRepository;
+        $body->when(true, function (MultipartBodyRepository $body) {
+            $body->add('name', 'Gareth');
+        });
+        $body->when(false, function (MultipartBodyRepository $body) {
+            $body->add('name', 'Sam');
+        });
+        $body->when(true, function (MultipartBodyRepository $body) {
+            $body->add('sidekick', 'Mantas');
+        });
+        $body->when(false, function (MultipartBodyRepository $body) {
+            $body->add('sidekick', 'Teo');
+        });
 
-    $body->when(true, fn (MultipartBodyRepository $body) => $body->add('name', 'Gareth'));
-    $body->when(false, fn (MultipartBodyRepository $body) => $body->add('name', 'Sam'));
-    $body->when(true, fn (MultipartBodyRepository $body) => $body->add('sidekick', 'Mantas'));
-    $body->when(false, fn (MultipartBodyRepository $body) => $body->add('sidekick', 'Teo'));
+        $this->assertEquals([
+            new MultipartValue('name', 'Gareth'),
+            new MultipartValue('sidekick', 'Mantas'),
+        ], $body->all());
+    }
 
-    expect($body->all())->toEqual([
-        new MultipartValue('name', 'Gareth'),
-        new MultipartValue('sidekick', 'Mantas'),
-    ]);
-});
+    public function testYouCanDeleteAnItem()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can delete an item', function () {
-    $body = new MultipartBodyRepository();
+        $body->add('name', 'Sam');
+        $body->remove('name');
 
-    $body->add('name', 'Sam');
-    $body->remove('name');
+        $this->assertEquals([], $body->all());
+    }
 
-    expect($body->all())->toEqual([]);
-});
+    public function testYouCanGetAnItem()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can get an item', function () {
-    $body = new MultipartBodyRepository();
+        $body->add('name', 'Sam');
+        $body->add('friend', 'Chris');
 
-    $body->add('name', 'Sam');
-    $body->add('friend', 'Chris');
+        $this->assertEquals(new MultipartValue('name', 'Sam'), $body->get('name'));
+        $this->assertEquals(new MultipartValue('friend', 'Chris'), $body->get('friend'));
+    }
 
-    expect($body->get('name'))->toEqual(new MultipartValue('name', 'Sam'));
-    expect($body->get('friend'))->toEqual(new MultipartValue('friend', 'Chris'));
-});
+    public function testYouCanGetMultipleItemsWithTheSameName()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can get multiple items with the same name', function () {
-    $body = new MultipartBodyRepository();
+        $body->add('name', 'Sam');
+        $body->add('name', 'Alex');
 
-    $body->add('name', 'Sam');
-    $body->add('name', 'Alex');
+        $this->assertEquals([
+            new MultipartValue('name', 'Sam'),
+            new MultipartValue('name', 'Alex'),
+        ], $body->get('name'));
+    }
 
-    expect($body->get('name'))->toEqual([
-        new MultipartValue('name', 'Sam'),
-        new MultipartValue('name', 'Alex'),
-    ]);
-});
+    public function testYouCanGetAllItems()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can get all items', function () {
-    $body = new MultipartBodyRepository();
+        $body->add('name', 'Sam');
+        $body->add('superhero', 'Iron Man');
 
-    $body->add('name', 'Sam');
-    $body->add('superhero', 'Iron Man');
+        $allResults = [
+            new MultipartValue('name', 'Sam'),
+            new MultipartValue('superhero', 'Iron Man'),
+        ];
 
-    $allResults = [
-        new MultipartValue('name', 'Sam'),
-        new MultipartValue('superhero', 'Iron Man'),
-    ];
+        $this->assertEquals($allResults, $body->all());
+        $this->assertEquals($allResults, $body->all());
+    }
 
-    expect($body->all())->toEqual($allResults);
-    expect($body->all())->toEqual($allResults);
-});
+    public function testYouCanMergeItemsTogetherIntoTheBodyRepository()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can merge items together into the body repository', function () {
-    $body = new MultipartBodyRepository();
+        $this->assertInstanceOf(MergeableBody::class, $body);
 
-    expect($body)->toBeInstanceOf(MergeableBody::class);
+        $body->add('name', 'Sam');
+        $body->add('sidekick', 'Mantas');
 
-    $body->add('name', 'Sam');
-    $body->add('sidekick', 'Mantas');
+        $body->merge([new MultipartValue('sidekick', 'Gareth')], [new MultipartValue('superhero', 'Black Widow')]);
 
-    $body->merge([new MultipartValue('sidekick', 'Gareth')], [new MultipartValue('superhero', 'Black Widow')]);
+        $this->assertEquals([
+            new MultipartValue('name', 'Sam'),
+            new MultipartValue('sidekick', 'Mantas'),
+            new MultipartValue('sidekick', 'Gareth'),
+            new MultipartValue('superhero', 'Black Widow'),
+        ], $body->all());
+    }
 
-    expect($body->all())->toEqual([
-        new MultipartValue('name', 'Sam'),
-        new MultipartValue('sidekick', 'Mantas'),
-        new MultipartValue('sidekick', 'Gareth'),
-        new MultipartValue('superhero', 'Black Widow'),
-    ]);
-});
+    public function testItWillThrowAnExceptionIfTheMergedItemsAreNotMultipartValueObjects()
+    {
+        $body = new MultipartBodyRepository();
 
-test('it will throw an exception if the merged items are not MultipartValue objects', function () {
-    $body = new MultipartBodyRepository();
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('The value array must only contain Saloon\Data\MultipartValue objects');
 
-    $this->expectException(InvalidArgumentException::class);
-    $this->expectExceptionMessage('The value array must only contain Saloon\Data\MultipartValue objects');
+        $body->merge([new MultipartValue('sidekick', 'Gareth')], ['superhero' => 'Black Widow']);
+    }
 
-    $body->merge([new MultipartValue('sidekick', 'Gareth')], ['superhero' => 'Black Widow']);
-});
+    public function testYouCanCheckIfTheStoreIsEmptyOrNot()
+    {
+        $body = new MultipartBodyRepository();
 
-test('you can check if the store is empty or not', function () {
-    $body = new MultipartBodyRepository();
+        $this->assertTrue($body->isEmpty());
+        $this->assertFalse($body->isNotEmpty());
 
-    expect($body->isEmpty())->toBeTrue();
-    expect($body->isNotEmpty())->toBeFalse();
+        $body->add('name', 'Sam');
 
-    $body->add('name', 'Sam');
-
-    expect($body->isEmpty())->toBeFalse();
-    expect($body->isNotEmpty())->toBeTrue();
-});
+        $this->assertFalse($body->isEmpty());
+        $this->assertTrue($body->isNotEmpty());
+    }
+}

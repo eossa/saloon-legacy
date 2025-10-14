@@ -1,26 +1,36 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Saloon\Tests\Fixtures\Requests\SubRequest;
 use Saloon\Tests\Fixtures\Requests\UserRequestWithBootPlugin;
+use PHPUnit\Framework\TestCase;
 
-test('a plugin boot method has access to the request', function () {
-    $request = new UserRequestWithBootPlugin(1, 2);
+class PluginTest extends TestCase
+{
+    public function testAPluginBootMethodHasAccessToTheRequest()
+    {
+        $request = new UserRequestWithBootPlugin(1, 2);
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $headers = $pendingRequest->headers()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers)->toHaveKey('X-Plugin-User-Id', 1);
-    expect($headers)->toHaveKey('X-Plugin-Group-Id', 2);
-});
+        $this->assertArrayHasKey('X-Plugin-User-Id', $headers);
+        $this->assertEquals(1, $headers['X-Plugin-User-Id']);
+        $this->assertArrayHasKey('X-Plugin-Group-Id', $headers);
+        $this->assertEquals(2, $headers['X-Plugin-Group-Id']);
+    }
 
-test('sub-request does not need to use plugins', function () {
-    $request = new SubRequest(1, 2);
+    public function testSubRequestDoesNotNeedToUsePlugins()
+    {
+        $request = new SubRequest(1, 2);
 
-    $pendingRequest = connector()->createPendingRequest($request);
-    $headers = $pendingRequest->headers()->all();
+        $pendingRequest = connector()->createPendingRequest($request);
+        $headers = $pendingRequest->headers()->all();
 
-    expect($headers)->toHaveKey('X-Plugin-User-Id', 1);
-    expect($headers)->toHaveKey('X-Plugin-Group-Id', 2);
-});
+        $this->assertArrayHasKey('X-Plugin-User-Id', $headers);
+        $this->assertEquals(1, $headers['X-Plugin-User-Id']);
+        $this->assertArrayHasKey('X-Plugin-Group-Id', $headers);
+        $this->assertEquals(2, $headers['X-Plugin-Group-Id']);
+    }
+}

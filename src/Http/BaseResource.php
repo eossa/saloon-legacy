@@ -1,16 +1,19 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http;
 
 class BaseResource
 {
     /**
+     * @var Connector
+     */
+    protected $connector;
+
+    /**
      * Constructor
      */
-    public function __construct(readonly protected Connector $connector)
+    public function __construct(Connector $connector)
     {
-        //
+        $this->connector = $connector;
     }
 }

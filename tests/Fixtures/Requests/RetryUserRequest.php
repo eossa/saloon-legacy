@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Closure;
@@ -16,26 +14,45 @@ class RetryUserRequest extends Request
     /**
      * Define the HTTP method.
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
+
+    /**
+     * @var Closure|null
+     */
+    protected $handleRetry;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
-    public function __construct(?int $tries = null, int $retryInterval = 0, ?bool $throwOnMaxTries = null, protected ?Closure $handleRetry = null)
+    /**
+     * @param int|null $tries
+     * @param int $retryInterval
+     * @param bool|null $throwOnMaxTries
+     * @param Closure|null $handleRetry
+     */
+    public function __construct($tries = null, $retryInterval = 0, $throwOnMaxTries = null, Closure $handleRetry = null)
     {
         // These are just for us to test the various retries
 
         $this->tries = $tries;
         $this->retryInterval = $retryInterval;
         $this->throwOnMaxTries = $throwOnMaxTries;
+        $this->handleRetry = $handleRetry;
     }
 
-    public function handleRetry(FatalRequestException|RequestException $exception, RequestContract $request): bool
+    /**
+     * @param FatalRequestException|RequestException $exception
+     *
+     * @return bool
+     */
+    public function handleRetry($exception, RequestContract $request)
     {
         return isset($this->handleRetry) ? call_user_func($this->handleRetry, $exception, $request) : true;
     }

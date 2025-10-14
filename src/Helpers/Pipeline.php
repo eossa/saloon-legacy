@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Helpers;
 
 use Saloon\Data\Pipe;
@@ -13,17 +11,22 @@ class Pipeline
     /**
      * The pipes in the pipeline.
      *
-     * @var array<\Saloon\Data\Pipe>
+     * @var array<Pipe>
      */
-    protected array $pipes = [];
+    protected $pipes = [];
 
     /**
      * Add a pipe to the pipeline
      *
      * @param callable(mixed $payload): (mixed) $callable
+     * @param ?string $name
+     * @param ?string $order
+     *
      * @return $this
+     *
+     * @throws DuplicatePipeNameException
      */
-    public function pipe(callable $callable, ?string $name = null, ?PipeOrder $order = null): static
+    public function pipe(callable $callable, $name = null, $order = null)
     {
         $pipe = new Pipe($callable, $name, $order);
 
@@ -38,8 +41,12 @@ class Pipeline
 
     /**
      * Process the pipeline.
+     *
+     * @param mixed $payload
+     *
+     * @return mixed
      */
-    public function process(mixed $payload): mixed
+    public function process($payload)
     {
         foreach ($this->sortPipes() as $pipe) {
             $payload = call_user_func($pipe->callable, $payload);
@@ -51,9 +58,9 @@ class Pipeline
     /**
      * Sort the pipes based on the "order" classes
      *
-     * @return array<\Saloon\Data\Pipe>
+     * @return array<Pipe>
      */
-    protected function sortPipes(): array
+    protected function sortPipes()
     {
         $firstPipes = [];
         $nullPipes = [];
@@ -63,11 +70,17 @@ class Pipeline
         // arrays based on the order type. We'll then merge the arrays.
 
         foreach ($this->pipes as $pipe) {
-            match ($pipe->order) {
-                PipeOrder::FIRST => $firstPipes[] = $pipe,
-                null => $nullPipes[] = $pipe,
-                PipeOrder::LAST => $lastPipes[] = $pipe,
-            };
+            switch ($pipe->order) {
+                case PipeOrder::FIRST:
+                    $firstPipes[] = $pipe;
+                    break;
+                case null:
+                    $nullPipes[] = $pipe;
+                    break;
+                case PipeOrder::LAST:
+                    $lastPipes[] = $pipe;
+                    break;
+            }
         }
 
         return array_merge($firstPipes, $nullPipes, $lastPipes);
@@ -76,10 +89,13 @@ class Pipeline
     /**
      * Set the pipes on the pipeline.
      *
-     * @param array<\Saloon\Data\Pipe> $pipes
+     * @param array<Pipe> $pipes
+     *
      * @return $this
+     *
+     * @throws DuplicatePipeNameException
      */
-    public function setPipes(array $pipes): static
+    public function setPipes(array $pipes)
     {
         $this->pipes = [];
 
@@ -96,17 +112,21 @@ class Pipeline
     /**
      * Get all the pipes in the pipeline
      *
-     * @return array<\Saloon\Data\Pipe>
+     * @return array<Pipe>
      */
-    public function getPipes(): array
+    public function getPipes()
     {
         return $this->pipes;
     }
 
     /**
      * Check if a given pipe exists for a name
+     *
+     * @param string $name
+     *
+     * @return bool
      */
-    protected function pipeExists(string $name): bool
+    protected function pipeExists($name)
     {
         foreach ($this->pipes as $pipe) {
             if ($pipe->name === $name) {

@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -20,33 +18,52 @@ class DefaultAuthenticatorRequest extends Request
      *
      * @var string|null
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * The connector.
      *
      * @var string|null
      */
-    protected string $connector = TestConnector::class;
+    protected $connector = TestConnector::class;
+
+    /**
+     * @var int|null
+     */
+    public $userId;
+
+    /**
+     * @var int|null
+     */
+    public $groupId;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
     /**
      * Provide default authentication.
+     *
+     * @return Authenticator|null
      */
-    protected function defaultAuth(): ?Authenticator
+    protected function defaultAuth()
     {
         return new TokenAuthenticator('yee-haw-request');
     }
 
-    public function __construct(public ?int $userId = null, public ?int $groupId = null)
+    /**
+     * @param int|null $userId
+     * @param int|null $groupId
+     */
+    public function __construct($userId = null, $groupId = null)
     {
-        //
+        $this->userId = $userId;
+        $this->groupId = $groupId;
     }
 }

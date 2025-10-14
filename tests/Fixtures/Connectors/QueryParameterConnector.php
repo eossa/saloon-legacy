@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Connectors;
 
 use Saloon\Http\Connector;
@@ -12,21 +10,35 @@ class QueryParameterConnector extends Connector
     use AcceptsJson;
 
     /**
-     * Constructor
+     * @var string|null
      */
-    public function __construct(public ?string $url = null)
+    public $url;
+
+    /**
+     * Constructor
+     *
+     * @param string|null $url
+     */
+    public function __construct($url = null)
     {
+        $this->url = $url;
         if (is_null($this->url)) {
             $this->url = apiUrl();
         }
     }
 
-    public function resolveBaseUrl(): string
+    /**
+     * @return string
+     */
+    public function resolveBaseUrl()
     {
         return $this->url;
     }
 
-    protected function defaultQuery(): array
+    /**
+     * @return string[]
+     */
+    protected function defaultQuery()
     {
         return [
             'sort' => 'first_name',

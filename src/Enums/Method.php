@@ -1,18 +1,16 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Enums;
 
-enum Method: string
+final class Method
 {
-    case GET = 'GET';
-    case HEAD = 'HEAD';
-    case POST = 'POST';
-    case PUT = 'PUT';
-    case PATCH = 'PATCH';
-    case DELETE = 'DELETE';
-    case OPTIONS = 'OPTIONS';
-    case CONNECT = 'CONNECT';
-    case TRACE = 'TRACE';
+    const GET = 'GET';
+    const HEAD = 'HEAD';
+    const POST = 'POST';
+    const PUT = 'PUT';
+    const PATCH = 'PATCH';
+    const DELETE = 'DELETE';
+    const OPTIONS = 'OPTIONS';
+    const CONNECT = 'CONNECT';
+    const TRACE = 'TRACE';
 }

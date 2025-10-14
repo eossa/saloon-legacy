@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Http\Senders\Factories;
 
 use Saloon\Data\MultipartValue;
@@ -16,8 +14,11 @@ class GuzzleMultipartBodyFactory implements MultipartBodyFactory
      * Create a multipart body
      *
      * @param array<MultipartValue> $multipartValues
+     * @param string $boundary
+     *
+     * @return StreamInterface
      */
-    public function create(StreamFactoryInterface $streamFactory, array $multipartValues, string $boundary): StreamInterface
+    public function create(StreamFactoryInterface $streamFactory, array $multipartValues, $boundary)
     {
         $elements = array_map(static function (MultipartValue $value) {
             return [

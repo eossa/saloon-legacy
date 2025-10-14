@@ -1,11 +1,10 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits;
 
 use Closure;
 use ReflectionClass;
+use ReflectionException;
 use ReflectionMethod;
 use BadMethodCallException;
 
@@ -21,12 +20,17 @@ trait Macroable
      *
      * @var array<object|callable>
      */
-    protected static array $macros = [];
+    protected static $macros = [];
 
     /**
      * Create a macro
+     *
+     * @param string $name
+     * @param object|callable $macro
+     *
+     * @return void
      */
-    public static function macro(string $name, object|callable $macro): void
+    public static function macro($name, $macro)
     {
         static::$macros[$name] = $macro;
     }
@@ -35,8 +39,11 @@ trait Macroable
      * Add a mixin
      *
      * @param object|class-string $mixin
+     *
+     * @return void
+     * @throws ReflectionException
      */
-    public static function mixin(object|string $mixin): void
+    public static function mixin($mixin)
     {
         $methods = (new ReflectionClass($mixin))->getMethods(
             ReflectionMethod::IS_PUBLIC | ReflectionMethod::IS_PROTECTED
@@ -51,8 +58,12 @@ trait Macroable
 
     /**
      * Check if we have a macro
+     *
+     * @param string $name
+     *
+     * @return bool
      */
-    public static function hasMacro(string $name): bool
+    public static function hasMacro($name)
     {
         return isset(static::$macros[$name]);
     }
@@ -60,12 +71,15 @@ trait Macroable
     /**
      * Handle a static call
      *
+     * @param string $method
      * @param array<string, mixed> $parameters
+     *
+     * @return mixed
      */
-    public static function __callStatic(string $method, array $parameters): mixed
+    public static function __callStatic($method, array $parameters)
     {
         if (! static::hasMacro($method)) {
-            throw new BadMethodCallException("Method {$method} does not exist.");
+            throw new BadMethodCallException("Method $method does not exist.");
         }
 
         $macro = static::$macros[$method];
@@ -80,12 +94,15 @@ trait Macroable
     /**
      * Handle a method call
      *
+     * @param string $method
      * @param array<string, mixed> $parameters
+     *
+     * @return mixed
      */
-    public function __call(string $method, array $parameters): mixed
+    public function __call($method, array $parameters)
     {
         if (! static::hasMacro($method)) {
-            throw new BadMethodCallException("Method {$method} does not exist.");
+            throw new BadMethodCallException("Method $method does not exist.");
         }
 
         $macro = static::$macros[$method];

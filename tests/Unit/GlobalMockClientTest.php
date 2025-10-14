@@ -1,60 +1,72 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
+use PHPUnit\Framework\TestCase;
 use Saloon\Http\Faking\MockClient;
 use Saloon\Http\Faking\MockResponse;
 use Saloon\Tests\Fixtures\Requests\UserRequest;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 
-afterEach(function () {
-    MockClient::destroyGlobal();
-});
+class GlobalMockClientTest extends TestCase
+{
+    protected function tearDown()
+    {
+        MockClient::destroyGlobal();
+    }
 
-test('can create a global mock client', function () {
-    $mockClient = MockClient::global([
-        MockResponse::make(['name' => 'Sam']),
-    ]);
+    public function testCanCreateAGlobalMockClient()
+    {
+        $responses = [
+            MockResponse::make(['name' => 'Sam'])
+        ];
 
-    expect($mockClient)->toBeInstanceOf(MockClient::class);
-    expect(MockClient::getGlobal())->toBe($mockClient);
+        $mockClient = MockClient::setGlobal($responses);
 
-    $connector = new TestConnector;
-    $response = $connector->send(new UserRequest);
+        $this->assertInstanceOf('Saloon\Http\Faking\MockClient', $mockClient);
+        $this->assertSame($mockClient, MockClient::getGlobal());
 
-    expect($response->isMocked())->toBeTrue();
-    expect($response->json())->toEqual(['name' => 'Sam']);
+        $connector = new TestConnector();
+        $response = $connector->send(new UserRequest());
 
-    $mockClient->assertSent(UserRequest::class);
-});
+        $this->assertTrue($response->isMocked());
+        $this->assertEquals(['name' => 'Sam'], $response->json());
 
-test('the mock client can be destroyed', function () {
-    $mockClient = MockClient::global();
+        $mockClient->assertSent('Saloon\Tests\Fixtures\Requests\UserRequest');
+    }
 
-    expect(MockClient::getGlobal())->toBe($mockClient);
+    public function testTheMockClientCanBeDestroyed()
+    {
+        $mockClient = MockClient::setGlobal();
 
-    MockClient::destroyGlobal();
+        $this->assertSame($mockClient, MockClient::getGlobal());
 
-    expect(MockClient::getGlobal())->toBeNull();
-});
+        MockClient::destroyGlobal();
 
-test('a local mock client is given priority over the global mock client', function () {
-    MockClient::global([
-        MockResponse::make(['name' => 'Sam']),
-    ]);
+        $this->assertNull(MockClient::getGlobal());
+    }
 
-    $localMockClient = new MockClient([
-        MockResponse::make(['name' => 'Taylor']),
-    ]);
+    public function testALocalMockClientIsGivenPriorityOverTheGlobalMockClient()
+    {
+        $globalResponses = [
+            MockResponse::make(['name' => 'Sam'])
+        ];
+        MockClient::setGlobal($globalResponses);
 
-    $connector = new TestConnector;
-    $connector->withMockClient($localMockClient);
+        $localResponses = [
+            MockResponse::make(['name' => 'Taylor'])
+        ];
+        $localMockClient = new MockClient($localResponses);
 
-    $response = $connector->send(new UserRequest);
+        $connector = new TestConnector();
+        $connector->withMockClient($localMockClient);
 
-    expect($response->isMocked())->toBeTrue();
-    expect($response->json())->toEqual(['name' => 'Taylor']);
+        $response = $connector->send(new UserRequest());
 
-    $localMockClient->assertSentCount(1);
-    MockClient::global()->assertNothingSent();
-});
+        $this->assertTrue($response->isMocked());
+        $this->assertEquals(['name' => 'Taylor'], $response->json());
+
+        $localMockClient->assertSentCount(1);
+        MockClient::getGlobal()->assertNothingSent();
+    }
+}

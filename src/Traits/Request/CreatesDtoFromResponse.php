@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Request;
 
 use Saloon\Http\Response;
@@ -10,8 +8,10 @@ trait CreatesDtoFromResponse
 {
     /**
      * Cast the response to a DTO.
+     *
+     * @return mixed
      */
-    public function createDtoFromResponse(Response $response): mixed
+    public function createDtoFromResponse(Response $response)
     {
         return null;
     }

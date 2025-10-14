@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Unit;
 
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\StreamInterface;
@@ -10,62 +10,70 @@ use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\HasJsonBodyRequest;
 use Saloon\Tests\Fixtures\Requests\QueryParameterRequest;
 use Saloon\Tests\Fixtures\Connectors\QueryParameterConnector;
+use PHPUnit\Framework\TestCase;
 
-test('a psr-7 request can be created from the PendingRequest', function () {
-    $connector = new TestConnector;
-    $request = new UserRequest;
+class PsrTest extends TestCase
+{
+    public function testAPsr7RequestCanBeCreatedFromThePendingRequest()
+    {
+        $connector = new TestConnector();
+        $request = new UserRequest();
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $request = $pendingRequest->createPsrRequest();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $request = $pendingRequest->createPsrRequest();
 
-    expect($request)->toBeInstanceOf(RequestInterface::class);
-    expect($request->getUri())->toBeInstanceOf(UriInterface::class);
-    expect((string)$request->getUri())->toEqual('https://tests.saloon.dev/api/user');
-    expect($request->getMethod())->toEqual('GET');
-    expect($request->getHeaders())->toEqual([
-        'Host' => ['tests.saloon.dev'],
-        'Accept' => ['application/json'],
-    ]);
+        $this->assertInstanceOf(RequestInterface::class, $request);
+        $this->assertInstanceOf(UriInterface::class, $request->getUri());
+        $this->assertEquals('https://tests.saloon.dev/api/user', (string)$request->getUri());
+        $this->assertEquals('GET', $request->getMethod());
+        $this->assertEquals([
+            'Host' => ['tests.saloon.dev'],
+            'Accept' => ['application/json'],
+        ], $request->getHeaders());
 
-    expect($request->getProtocolVersion())->toEqual('1.1');
-});
+        $this->assertEquals('1.1', $request->getProtocolVersion());
+    }
 
-test('if request body is present then it will be on the psr-7 request', function () {
-    $connector = new TestConnector;
-    $request = new HasJsonBodyRequest;
+    public function testIfRequestBodyIsPresentThenItWillBeOnThePsr7Request()
+    {
+        $connector = new TestConnector();
+        $request = new HasJsonBodyRequest();
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $request = $pendingRequest->createPsrRequest();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $request = $pendingRequest->createPsrRequest();
 
-    $body = $request->getBody();
+        $body = $request->getBody();
 
-    expect($body)->toBeInstanceOf(StreamInterface::class);
-    expect($body->getContents())->toEqual('{"name":"Sam","catchphrase":"Yeehaw!"}');
-});
+        $this->assertInstanceOf(StreamInterface::class, $body);
+        $this->assertEquals('{"name":"Sam","catchphrase":"Yeehaw!"}', $body->getContents());
+    }
 
-test('you can generate a uri from the PendingRequest', function () {
-    $connector = new QueryParameterConnector;
-    $request = new QueryParameterRequest('/user?include=hats#fragment-123');
+    public function testYouCanGenerateAUriFromThePendingRequest()
+    {
+        $connector = new QueryParameterConnector();
+        $request = new QueryParameterRequest('/user?include=hats#fragment-123');
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $uri = $pendingRequest->getUri();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $uri = $pendingRequest->getUri();
 
-    expect($uri)->toBeInstanceOf(UriInterface::class);
+        $this->assertInstanceOf(UriInterface::class, $uri);
 
-    expect((string)$uri)->toEqual('https://tests.saloon.dev/api/user?include=hats&sort=first_name&per_page=100#fragment-123');
-    expect($uri->getScheme())->toEqual('https');
-    expect($uri->getHost())->toEqual('tests.saloon.dev');
-    expect($uri->getPath())->toEqual('/api/user');
-    expect($uri->getQuery())->toEqual('include=hats&sort=first_name&per_page=100');
-    expect($uri->getFragment())->toEqual('fragment-123');
-});
+        $this->assertEquals('https://tests.saloon.dev/api/user?include=hats&sort=first_name&per_page=100#fragment-123', (string)$uri);
+        $this->assertEquals('https', $uri->getScheme());
+        $this->assertEquals('tests.saloon.dev', $uri->getHost());
+        $this->assertEquals('/api/user', $uri->getPath());
+        $this->assertEquals('include=hats&sort=first_name&per_page=100', $uri->getQuery());
+        $this->assertEquals('fragment-123', $uri->getFragment());
+    }
 
-test('when using the url for query parameters you can use dots and value-less parameters', function () {
-    $connector = new TestConnector;
-    $request = new QueryParameterRequest('/user?account.id=1&checked&name=sam');
+    public function testWhenUsingTheUrlForQueryParametersYouCanUseDotsAndValueLessParameters()
+    {
+        $connector = new TestConnector();
+        $request = new QueryParameterRequest('/user?account.id=1&checked&name=sam');
 
-    $pendingRequest = $connector->createPendingRequest($request);
-    $uri = $pendingRequest->getUri();
+        $pendingRequest = $connector->createPendingRequest($request);
+        $uri = $pendingRequest->getUri();
 
-    expect($uri->getQuery())->toEqual('account.id=1&checked=&name=sam&per_page=100');
-});
+        $this->assertEquals('account.id=1&checked=&name=sam&per_page=100', $uri->getQuery());
+    }
+}

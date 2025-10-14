@@ -1,10 +1,8 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Exceptions\Request;
 
-use Throwable;
+use Exception;
 use Saloon\Http\PendingRequest;
 use Saloon\Exceptions\SaloonException;
 
@@ -21,13 +19,15 @@ class FatalRequestException extends SaloonException
 {
     /**
      * The PendingRequest
+     *
+     * @var PendingRequest
      */
-    protected PendingRequest $pendingSaloonRequest;
+    protected $pendingSaloonRequest;
 
     /**
      * Constructor
      */
-    public function __construct(Throwable $originalException, PendingRequest $pendingRequest)
+    public function __construct(Exception $originalException, PendingRequest $pendingRequest)
     {
         parent::__construct($originalException->getMessage(), $originalException->getCode(), $originalException);
 
@@ -36,8 +36,10 @@ class FatalRequestException extends SaloonException
 
     /**
      * Get the PendingRequest that caused the exception.
+     *
+     * @return PendingRequest
      */
-    public function getPendingRequest(): PendingRequest
+    public function getPendingRequest()
     {
         return $this->pendingSaloonRequest;
     }

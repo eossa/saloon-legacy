@@ -1,24 +1,32 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Data;
 
+use Exception;
 use Saloon\Http\Response;
 
 class ApiResponse
 {
+    /**
+     * @var array
+     */
+    public $data;
 
+    /**
+     * @param array $data
+     */
     public function __construct(
-        public array $data,
+        array $data
     ) {
-        //
+        $this->data = $data;
     }
 
     /**
      * @return static
+     *
+     * @throws Exception
      */
-    public static function fromSaloon(Response $response): self
+    public static function fromSaloon(Response $response)
     {
         return new static($response->json());
     }

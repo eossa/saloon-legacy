@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+namespace Saloon\Tests\Feature\Body;
 
 use Saloon\Http\PendingRequest;
 use GuzzleHttp\Psr7\HttpFactory;
@@ -9,45 +9,51 @@ use Psr\Http\Message\RequestInterface;
 use GuzzleHttp\Promise\FulfilledPromise;
 use Saloon\Tests\Fixtures\Connectors\TestConnector;
 use Saloon\Tests\Fixtures\Requests\HasFormBodyRequest;
+use PHPUnit\Framework\TestCase;
 
-test('the default body is loaded with the content type header', function () {
-    $request = new HasFormBodyRequest();
+class HasFormBodyTest extends TestCase
+{
+    public function testTheDefaultBodyIsLoadedWithTheContentTypeHeader()
+    {
+        $request = new HasFormBodyRequest();
 
-    expect($request->body()->all())->toEqual([
-        'name' => 'Sam',
-        'catchphrase' => 'Yeehaw!',
-    ]);
+        $this->assertEquals([
+            'name' => 'Sam',
+            'catchphrase' => 'Yeehaw!',
+        ], $request->body()->all());
 
-    $connector = new TestConnector;
-    $pendingRequest = $connector->createPendingRequest($request);
+        $connector = new TestConnector();
+        $pendingRequest = $connector->createPendingRequest($request);
 
-    expect($pendingRequest->headers()->get('Content-Type'))->toEqual('application/x-www-form-urlencoded');
-});
+        $this->assertEquals('application/x-www-form-urlencoded', $pendingRequest->headers()->get('Content-Type'));
+    }
 
-test('the guzzle sender properly sends it', function () {
-    $connector = new TestConnector;
-    $request = new HasFormBodyRequest;
+    public function testTheGuzzleSenderProperlySendsIt()
+    {
+        $connector = new TestConnector();
+        $request = new HasFormBodyRequest();
 
-    $request->middleware()->onRequest(static function (PendingRequest $pendingRequest) {
-        expect($pendingRequest->headers()->get('Content-Type'))->toEqual('application/x-www-form-urlencoded');
-    });
+        $request->middleware()->onRequest(function (PendingRequest $pendingRequest) {
+            $this->assertEquals('application/x-www-form-urlencoded', $pendingRequest->headers()->get('Content-Type'));
+        });
 
-    $asserted = false;
+        $asserted = false;
 
-    $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
-        return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
-            expect($guzzleRequest->getHeader('Content-Type'))->toEqual(['application/x-www-form-urlencoded']);
-            expect((string)$guzzleRequest->getBody())->toEqual((string)$request->body());
+        $connector->sender()->addMiddleware(function (callable $handler) use ($request, &$asserted) {
+            return function (RequestInterface $guzzleRequest, array $options) use ($request, &$asserted) {
+                $this->assertEquals(['application/x-www-form-urlencoded'], $guzzleRequest->getHeader('Content-Type'));
+                $this->assertEquals((string)$request->body(), (string)$guzzleRequest->getBody());
 
-            $asserted = true;
+                $asserted = true;
 
-            $factory = new HttpFactory;
+                $factory = new HttpFactory();
 
-            return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
-        };
-    });
+                return new FulfilledPromise(MockResponse::make()->createPsrResponse($factory, $factory));
+            };
+        });
 
-    $connector->send($request);
+        $connector->send($request);
 
-    expect($asserted)->toBeTrue();
-});
+        $this->assertTrue($asserted);
+    }
+}

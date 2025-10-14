@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Traits\Plugins;
 
 use Saloon\Config;
@@ -12,8 +10,10 @@ trait HasTimeout
 {
     /**
      * Boot HasTimeout plugin.
+     *
+     * @return void
      */
-    public function bootHasTimeout(PendingRequest $pendingRequest): void
+    public function bootHasTimeout(PendingRequest $pendingRequest)
     {
         $pendingRequest->config()->merge([
             RequestOptions::CONNECT_TIMEOUT => $this->getConnectTimeout(),
@@ -23,16 +23,20 @@ trait HasTimeout
 
     /**
      * Get the request connection timeout.
+     *
+     * @return float
      */
-    public function getConnectTimeout(): float
+    public function getConnectTimeout()
     {
         return property_exists($this, 'connectTimeout') ? $this->connectTimeout : Config::$defaultConnectionTimeout;
     }
 
     /**
      * Get the request timeout.
+     *
+     * @return float
      */
-    public function getRequestTimeout(): float
+    public function getRequestTimeout()
     {
         return property_exists($this, 'requestTimeout') ? $this->requestTimeout : Config::$defaultRequestTimeout;
     }

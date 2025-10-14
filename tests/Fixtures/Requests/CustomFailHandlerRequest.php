@@ -1,7 +1,5 @@
 <?php
 
-declare(strict_types=1);
-
 namespace Saloon\Tests\Fixtures\Requests;
 
 use Saloon\Enums\Method;
@@ -15,21 +13,27 @@ class CustomFailHandlerRequest extends Request
      *
      * @var string
      */
-    protected Method $method = Method::GET;
+    protected $method = Method::GET;
 
     /**
      * Define the endpoint for the request.
+     *
+     * @return string
      */
-    public function resolveEndpoint(): string
+    public function resolveEndpoint()
     {
         return '/user';
     }
 
     /**
      * Determine if the request has failed
+     *
+     * @param Response $response
+     *
+     * @return bool
      */
-    public function hasRequestFailed(Response $response): bool
+    public function hasRequestFailed(Response $response)
     {
-        return str_contains($response->body(), 'Yee-naw:');
+        return strpos($response->body(), 'Yee-naw:') !== false;
     }
 }
